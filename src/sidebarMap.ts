@@ -1,5 +1,14 @@
 export function mapSidebarCommand(input: string): string | undefined {
   const lower = input.toLowerCase();
+  if (/(open file menu|show file menu|file menu|focus file menu|file dropdown|file top menu)/.test(lower)) {
+    return 'natural-language-commands.fileMenu';
+  }
+  if (/(open (the )?terminal menu( on the top)?|show (the )?terminal menu( on the top)?|terminal menu( on the top)?|focus (the )?terminal menu( on the top)?|terminal dropdown|terminal top menu|top terminal menu|terminal menu at the top|the terminal menu on the top)/.test(lower)) {
+    return 'natural-language-commands.terminalMenu';
+  }
+  if (/(what can i say|examples|show examples|help|show help|show natural commands|show natural language commands|show command examples)/.test(lower)) {
+    return 'natural-language-commands.examples';
+  }
   if (/(command history|history sidebar|show command history|see command history|open command history|nlc history|natural language command history)/.test(lower)) {
     return 'commandHistory.focus';
   }

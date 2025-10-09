@@ -32,6 +32,11 @@
           "id": "commandHistoryView",
           "name": "Command History",
           "icon": "natural-language-commands.png"
+        },
+        {
+          "id": "exampleCommandsView",
+          "name": "Example Commands",
+          "icon": "natural-language-commands.png"
         }
       ]
     },

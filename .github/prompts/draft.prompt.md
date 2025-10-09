@@ -1,3 +1,3 @@
-Please can we have a sidebar that shows a history of all the commands that have been run for the current session with the ability to click one to re-run it?
+ I would like to have another command where we can ask for a list of all these sidebars  and these would be shown below in text form so we can filter down and go to the one we want and then it would be focused in the sidebar because navigating by voice onto an icon is problematic
 
-The sidebar should be collapsible and resizable, and should show the command name, the time it was run, and any parameters that were passed to it. It should also have a search bar at the top to filter the commands by name or parameter. The most recent commands should be at the top of the list. There should also be a button to clear the history.
+  also can we add similar commands that we've done for the file menu to all the menus on the top like edit select view go run help

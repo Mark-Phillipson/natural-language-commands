@@ -12,9 +12,89 @@ const HISTORY_KEY = 'nlc.commandHistory';
 const HISTORY_LIMIT = 20;
 
 export function activate(context: vscode.ExtensionContext) {
+	// Register a command to simulate the Terminal menu
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.terminalMenu', async () => {
+			vscode.window.showWarningMessage(
+				'Opening the native Terminal menu is not supported by VS Code extensions. Here are common terminal actions you can use instead.'
+			);
+			const actions = [
+				{ label: 'New Terminal', command: 'workbench.action.terminal.new' },
+				{ label: 'Split Terminal', command: 'workbench.action.terminal.split' },
+				{ label: 'Kill Terminal', command: 'workbench.action.terminal.kill' },
+				{ label: 'Run Task...', command: 'workbench.action.tasks.runTask' },
+				{ label: 'Configure Tasks...', command: 'workbench.action.tasks.configureTaskRunner' },
+				{ label: 'Show Terminal', command: 'workbench.action.terminal.toggleTerminal' },
+				{ label: 'Focus Next Terminal', command: 'workbench.action.terminal.focusNext' },
+				{ label: 'Focus Previous Terminal', command: 'workbench.action.terminal.focusPrevious' },
+			];
+			const pick = await vscode.window.showQuickPick(actions, {
+				placeHolder: 'Select a terminal action to run:',
+				canPickMany: false
+			});
+			if (pick && pick.command) {
+				vscode.commands.executeCommand(pick.command);
+			}
+		})
+	);
+	// Register a command to simulate the File menu
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.fileMenu', async () => {
+			vscode.window.showWarningMessage(
+				'Opening the native File menu is not supported by VS Code extensions. Here are common file actions you can use instead.'
+			);
+			const actions = [
+				{ label: 'New File', command: 'explorer.newFile' },
+				{ label: 'Open File...', command: 'workbench.action.files.openFile' },
+				{ label: 'Open Folder...', command: 'workbench.action.files.openFolder' },
+				{ label: 'Save', command: 'workbench.action.files.save' },
+				{ label: 'Save As...', command: 'workbench.action.files.saveAs' },
+				{ label: 'Save All', command: 'workbench.action.files.saveAll' },
+				{ label: 'Close Editor', command: 'workbench.action.closeActiveEditor' },
+				{ label: 'Close Folder', command: 'workbench.action.closeFolder' },
+				{ label: 'Revert File', command: 'workbench.action.files.revert' },
+			];
+			const pick = await vscode.window.showQuickPick(actions, {
+				placeHolder: 'Select a file action to run:',
+				canPickMany: false
+			});
+			if (pick && pick.command) {
+				vscode.commands.executeCommand(pick.command);
+			}
+		})
+	);
+	// Register a command to show example natural language commands
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.examples', async () => {
+			const examples = [
+				'Open the terminal and run my tests',
+				'Show the command history sidebar',
+				'Open the explorer',
+				'Show me my extensions',
+				'Switch to the source control view',
+				'Open settings in JSON view',
+				'Create a new file called hello.txt',
+				'Find all TODO comments in the workspace',
+				'Show me the output panel',
+				'Run the build task',
+				'What is the current git branch?',
+				'Show me the problems panel',
+				'Open the debug console',
+				'Show me the command palette',
+				'Clear the command history',
+			];
+			await vscode.window.showQuickPick(examples, {
+				placeHolder: 'Example natural language commands you can say:',
+				canPickMany: false
+			});
+		})
+	);
 	// Set up command history provider for the sidebar
 	const commandHistoryProvider = new CommandHistoryProvider();
 	vscode.window.registerTreeDataProvider('commandHistoryView', commandHistoryProvider);
+	// Register a second section for example commands
+	const exampleCommandsProvider = new (require('./commandHistoryProvider').ExampleCommandsProvider)();
+	vscode.window.registerTreeDataProvider('exampleCommandsView', exampleCommandsProvider);
 	// Register a command to focus/reveal the Command History sidebar
 	let commandHistoryTreeView: vscode.TreeView<any> | undefined;
 	context.subscriptions.push(
@@ -60,9 +140,9 @@ export function activate(context: vscode.ExtensionContext) {
 	// Register the main natural language command (with history QuickPick)
 	const disposable = vscode.commands.registerCommand('natural-language-commands.run', async () => {
 			vscode.window.showInformationMessage('[NLC DEBUG] Handler triggered for user input.');
-		// Get history from globalState
-		let history: string[] = context.globalState.get<string[]>(HISTORY_KEY) || [];
-		// Prepare QuickPick items
+		// Get history from globalState and trim all entries
+		let history: string[] = (context.globalState.get<string[]>(HISTORY_KEY) || []).map(cmd => cmd.trim());
+		// Prepare QuickPick items (all trimmed)
 		const quickPickItems: vscode.QuickPickItem[] = [
 			{ label: '$(plus) Enter New Command', alwaysShow: true },
 			...history.map(cmd => ({ label: cmd }))
@@ -91,12 +171,13 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.window.showInformationMessage('No command entered.');
 			return;
 		}
-		// Update history: add to top, remove duplicates, trim to limit
-		history = [userInput, ...history.filter(cmd => cmd !== userInput)].slice(0, HISTORY_LIMIT);
-		await context.globalState.update(HISTORY_KEY, history);
+	// Update history: add to top, remove duplicates, trim to limit (all trimmed)
+	const trimmedInput = userInput.trim();
+	history = [trimmedInput, ...history.filter(cmd => cmd !== trimmedInput)].slice(0, HISTORY_LIMIT);
+	await context.globalState.update(HISTORY_KEY, history);
 		// Add to session sidebar history
 		commandHistoryProvider.addCommand({
-			label: userInput,
+			label: userInput.trim(),
 			time: new Date(),
 			parameters: '' // You can enhance this to capture parameters if needed
 		});
@@ -230,7 +311,7 @@ export function activate(context: vscode.ExtensionContext) {
 		await context.globalState.update(HISTORY_KEY, history);
 		// Add to session sidebar history
 		commandHistoryProvider.addCommand({
-			label: userInput,
+			label: userInput.trim(),
 			time: new Date(),
 			parameters: '' // You can enhance this to capture parameters if needed
 		});
