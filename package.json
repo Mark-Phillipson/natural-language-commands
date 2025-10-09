@@ -12,10 +12,29 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:natural-language-commands.run"
+    "onCommand:natural-language-commands.run",
+    "onCommand:natural-language-commands.new"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "commandHistoryContainer",
+          "title": "Command History",
+          "icon": "nlc-history.svg"
+        }
+      ]
+    },
+    "views": {
+      "commandHistoryContainer": [
+        {
+          "id": "commandHistoryView",
+          "name": "Command History",
+          "icon": "natural-language-commands.png"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "natural-language-commands.run",
@@ -23,11 +42,46 @@
         "category": "Natural Language Commands"
       },
       {
-        "command": "natural-language-commands.showAlerts",
-        "title": "Show Alert Messages",
+        "command": "natural-language-commands.new",
+        "title": "New Natural Language Command",
+        "category": "Natural Language Commands"
+      },
+      {
+        "command": "commandHistory.clearHistory",
+        "title": "Clear Command History",
+        "category": "Natural Language Commands"
+      },
+      {
+        "command": "commandHistory.reRunCommand",
+        "title": "Re-run Command from History",
+        "category": "Natural Language Commands"
+      },
+      {
+        "command": "commandHistory.focus",
+        "title": "Show Command History Sidebar",
         "category": "Natural Language Commands"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "commandHistory.clearHistory",
+          "when": "view == commandHistoryView",
+          "group": "navigation",
+          "icon": {
+            "light": "clear.svg",
+            "dark": "clear.svg"
+          }
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "commandHistory.reRunCommand",
+          "when": "view == commandHistoryView",
+          "group": "inline"
+        }
+      ]
+    },
     "configuration": {
       "type": "object",
       "title": "Natural Language Commands",

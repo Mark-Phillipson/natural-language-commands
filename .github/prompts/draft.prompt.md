@@ -1,0 +1,3 @@
+Please can we have a sidebar that shows a history of all the commands that have been run for the current session with the ability to click one to re-run it?
+
+The sidebar should be collapsible and resizable, and should show the command name, the time it was run, and any parameters that were passed to it. It should also have a search bar at the top to filter the commands by name or parameter. The most recent commands should be at the top of the list. There should also be a button to clear the history.
