@@ -43,6 +43,9 @@ export function mapSidebarCommand(input: string): string | undefined {
   if (/(command history|history sidebar|show command history|see command history|open command history|nlc history|natural language command history)/.test(lower)) {
     return 'commandHistory.focus';
   }
+  if (/(problems|problem panel|problems panel|show problems|see problems|open problems|focus problems|problems view|show the problems|see the problems|open the problems|focus the problems)/.test(lower)) {
+    return 'workbench.actions.view.problems';
+  }
   if (/(explorer|file ?explorer|show files|see files|open explorer)/.test(lower)) { return 'workbench.view.explorer'; }
   if (/(extension|marketplace|show extensions|see extensions|open extensions)/.test(lower)) { return 'workbench.view.extensions'; }
   if (/(source control|git|scm|show source|see source|open source)/.test(lower)) { return 'workbench.view.scm'; }
