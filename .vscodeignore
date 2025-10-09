@@ -1,4 +1,4 @@
-.vscode/**
+.env.vscode/**
 .vscode-test/**
 src/**
 .gitignore
@@ -9,3 +9,7 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+
+# Exclude all .env files from packaging
+.env
+extension/.env
