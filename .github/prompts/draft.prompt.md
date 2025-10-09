@@ -1,7 +1,1 @@
-I would like to be able to say the following:
-
- please list all the tables available in my database VoiceLauncher
-
-  Visual Studio Code should open up a new SQL document and open up the list of connections with VoiceLauncher filtered. Maybe is this something that's feasible?
-
-   I have SQL Server as one of my sidebars/extensions
+When I am doing debugging I have voice commands to step through and stop and start but can we also have them available via text commands if I say something like show debugging commands these commands should also include the ability to set breakpoints and remove them and list them and also to show the call stack and variables and all that kind of stuff

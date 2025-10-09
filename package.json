@@ -66,6 +66,12 @@
         "title": "Show Command History Sidebar",
         "category": "Natural Language Commands"
       }
+      ,
+      {
+        "command": "natural-language-commands.debugMenu",
+        "title": "Show Debugging Commands",
+        "category": "Natural Language Commands"
+      }
     ],
     "menus": {
       "view/title": [

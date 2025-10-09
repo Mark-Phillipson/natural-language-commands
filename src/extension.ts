@@ -1,3 +1,4 @@
+	// ...existing code...
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
@@ -361,6 +362,11 @@ export function activate(context: vscode.ExtensionContext) {
 			const debugShowRaw = config.get<boolean>('naturalLanguageCommands.debugShowRawResponse', false);
 			const start = Date.now();
 			const parsed = await getLLMResult(apiKey, userInput, model);
+			// Debugging menu trigger by intent or command
+			if (parsed && (/(debugging commands|show debugging commands|debug menu|show debug menu|debugging actions|debug actions)/i.test(userInput) || /(debugging commands|debug menu)/i.test(parsed.intent || '') || /(debugging commands|debug menu)/i.test(parsed.command || ''))) {
+				await vscode.commands.executeCommand('natural-language-commands.debugMenu');
+				return;
+			}
 			// LLM semantic override: If isCommandHistorySidebar is true, always open sidebar and return
 			if (parsed && parsed.isCommandHistorySidebar) {
 				vscode.window.showInformationMessage('[NLC LLM SEMANTIC OVERRIDE] LLM flagged isCommandHistorySidebar: Opening Command History Sidebar (commandHistory.focus)');
@@ -444,37 +450,45 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			// Otherwise, show alternatives if present
-			if (altCommands && altCommands.length > 0) {
-				const numbered = altCommands.map((alt, idx) => {
-					let label = `${idx + 1}. `;
-					if (alt.command) { label += `Command: ${alt.command}`; }
-					if (alt.terminal) { label += ` Terminal: ${alt.terminal}`; }
-					if (alt.description) { label += ` — ${alt.description}`; }
-					return { label, alt, idx };
-				});
-				const pick = await vscode.window.showQuickPick(numbered, {
-					placeHolder: 'Select a command to run (type the number and press Enter)',
-					ignoreFocusOut: true,
-				});
-				if (pick) {
-					const selected = pick.alt;
-					if (selected.command && selected.command.trim().length > 0) {
-						const trimmed = selected.command.trim();
-						vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
-						const result = await vscode.commands.executeCommand(trimmed);
-						if (result !== undefined) {
-							vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
-						} else {
-							vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+						if (altCommands && altCommands.length > 0) {
+							type AltCommand = { command?: string; terminal?: string; description?: string };
+							type NumberedPick = { label: string; alt: AltCommand; idx: number };
+							const numbered: NumberedPick[] = altCommands.map((alt: any, idx: number) => {
+								// Normalize nulls to undefined for type compatibility
+								const normalized: AltCommand = {
+									command: alt.command ?? undefined,
+									terminal: alt.terminal ?? undefined,
+									description: alt.description
+								};
+								let label = `${idx + 1}. `;
+								if (normalized.command) { label += `Command: ${normalized.command}`; }
+								if (normalized.terminal) { label += ` Terminal: ${normalized.terminal}`; }
+								if (normalized.description) { label += ` — ${normalized.description}`; }
+								return { label, alt: normalized, idx };
+							});
+							const pick = await vscode.window.showQuickPick(numbered, {
+								placeHolder: 'Select a command to run (type the number and press Enter)',
+								ignoreFocusOut: true,
+							});
+							if (pick) {
+								const selected = pick.alt;
+								if (selected.command && selected.command.trim().length > 0) {
+									const trimmed = selected.command.trim();
+									vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
+									const result = await vscode.commands.executeCommand(trimmed);
+									if (result !== undefined) {
+										vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+									} else {
+										vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+									}
+								} else if (selected.terminal && selected.terminal.trim().length > 0) {
+									const trimmed = selected.terminal.trim();
+									vscode.window.showInformationMessage(`(Simulated) Would execute terminal command: ${trimmed}`);
+									// Add terminal execution logic here if needed
+								}
+								return;
+							}
 						}
-					} else if (selected.terminal && selected.terminal.trim().length > 0) {
-						const trimmed = selected.terminal.trim();
-						vscode.window.showInformationMessage(`(Simulated) Would execute terminal command: ${trimmed}`);
-						// Add terminal execution logic here if needed
-					}
-					return;
-				}
-			}
 
 
 			// CENTRALIZED INTENT OVERRIDE: If intent or command matches, always show Command History sidebar and return
@@ -542,6 +556,11 @@ export function activate(context: vscode.ExtensionContext) {
 			const debugShowRaw = config.get<boolean>('naturalLanguageCommands.debugShowRawResponse', false);
 			const start = Date.now();
 			const parsed = await getLLMResult(apiKey, userInput, model);
+			// Debugging menu trigger by intent or command
+			if (parsed && (/(debugging commands|show debugging commands|debug menu|show debug menu|debugging actions|debug actions)/i.test(userInput) || /(debugging commands|debug menu)/i.test(parsed.intent || '') || /(debugging commands|debug menu)/i.test(parsed.command || ''))) {
+				await vscode.commands.executeCommand('natural-language-commands.debugMenu');
+				return;
+			}
 			const duration = Date.now() - start;
 			vscode.window.showInformationMessage(`LLM response time: ${duration} ms`);
 			if (debugShowRaw && parsed.rawResponse) {
@@ -570,12 +589,20 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// Otherwise, show alternatives if present
 			if (altCommands && altCommands.length > 0) {
-				const numbered = altCommands.map((alt, idx) => {
+				type AltCommand = { command?: string; terminal?: string; description?: string };
+				type NumberedPick = { label: string; alt: AltCommand; idx: number };
+				const numbered: NumberedPick[] = altCommands.map((alt: any, idx: number) => {
+					// Normalize nulls to undefined for type compatibility
+					const normalized: AltCommand = {
+						command: alt.command ?? undefined,
+						terminal: alt.terminal ?? undefined,
+						description: alt.description
+					};
 					let label = `${idx + 1}. `;
-					if (alt.command) { label += `Command: ${alt.command}`; }
-					if (alt.terminal) { label += ` Terminal: ${alt.terminal}`; }
-					if (alt.description) { label += ` — ${alt.description}`; }
-					return { label, alt, idx };
+					if (normalized.command) { label += `Command: ${normalized.command}`; }
+					if (normalized.terminal) { label += ` Terminal: ${normalized.terminal}`; }
+					if (normalized.description) { label += ` — ${normalized.description}`; }
+					return { label, alt: normalized, idx };
 				});
 				const pick = await vscode.window.showQuickPick(numbered, {
 					placeHolder: 'Select a command to run (type the number and press Enter)',
