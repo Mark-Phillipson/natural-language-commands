@@ -1,7 +1,9 @@
 {
   "name": "natural-language-commands",
+  "publisher": "mark-phillipson",
   "displayName": "Natural Language Commands",
   "description": " receive natural language commands and perform a Visual Studio code command that matches",
+  "icon": "natural-language-commands.png",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.54.0"
