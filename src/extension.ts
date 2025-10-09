@@ -6,12 +6,37 @@ import { mapSidebarCommand } from './sidebarMap';
 import { NotificationManager } from './notificationManager';
 import { CommandHistoryProvider, CommandHistoryItem } from './commandHistoryProvider';
 
-
 // Helper for command history
 const HISTORY_KEY = 'nlc.commandHistory';
 const HISTORY_LIMIT = 20;
 
 export function activate(context: vscode.ExtensionContext) {
+		// Command: List all tables in VoiceLauncher database
+		context.subscriptions.push(
+			vscode.commands.registerCommand('natural-language-commands.listTablesVoiceLauncher', async (dbName?: string) => {
+				// 1. Open a new untitled SQL file
+				const doc = await vscode.workspace.openTextDocument({ language: 'sql', content: '' });
+				await vscode.window.showTextDocument(doc);
+
+				// 2. Trigger MSSQL connect command (user must select the database if not already connected)
+				await vscode.commands.executeCommand('mssql.connect');
+
+				// 3. Insert the query to list all tables for the specified database
+				const editor = vscode.window.activeTextEditor;
+				if (editor) {
+					let useDb = dbName ? `USE [${dbName}];\n` : '';
+					const query = `${useDb}SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';\n`;
+					await editor.edit(editBuilder => {
+						editBuilder.insert(new vscode.Position(0, 0), query);
+					});
+				}
+
+				// 4. Optionally, trigger query execution (user must confirm connection if not already connected)
+				setTimeout(() => {
+					vscode.commands.executeCommand('mssql.executeQuery');
+				}, 1000);
+			})
+		);
 	// Simulated Edit menu
 	context.subscriptions.push(
 		vscode.commands.registerCommand('natural-language-commands.editMenu', async () => {
@@ -342,6 +367,31 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand('commandHistory.focus');
 				return;
 			}
+
+			// Check intent for any "list all tables" workflow intent
+			if (parsed && parsed.intent && typeof parsed.intent === 'string') {
+				const intentStr = parsed.intent.trim().toLowerCase();
+				if (/list (all )?tables/.test(intentStr) || /show (me )?(all )?tables/.test(intentStr)) {
+					// Try to extract database name from user input
+					let dbName = '';
+					if (userInput && /voice ?launcher/i.test(userInput)) {
+						dbName = 'VoiceLauncher';
+					} else {
+						// Prompt user for database name
+						dbName = await vscode.window.showInputBox({
+							prompt: 'Which database do you want to list tables for?',
+							placeHolder: 'Enter database name (e.g., VoiceLauncher)'
+						}) || '';
+						if (!dbName) {
+							vscode.window.showWarningMessage('No database specified. Aborting table listing.');
+							return;
+						}
+					}
+					vscode.window.showInformationMessage(`Triggering table listing workflow for database: ${dbName}`);
+					await vscode.commands.executeCommand('natural-language-commands.listTablesVoiceLauncher', dbName);
+					return;
+				}
+			}
 			const duration = Date.now() - start;
 			vscode.window.showInformationMessage(`LLM response time: ${duration} ms`);
 			// Diagnostic logging for LLM result and intent/command
@@ -361,6 +411,13 @@ export function activate(context: vscode.ExtensionContext) {
 			// If parsed.command is present, execute it directly
 			if (parsed.command && typeof parsed.command === 'string' && parsed.command.trim().length > 0) {
 				const trimmed = parsed.command.trim();
+				// Custom mapping for VoiceLauncher table listing intent
+				if (/list (all )?tables( available)? in (my )?(voice ?launcher|voicelauncher)/i.test(trimmed) ||
+					/show (me )?(all )?tables( in)? (my )?(voice ?launcher|voicelauncher)/i.test(trimmed)) {
+					vscode.window.showInformationMessage('Triggering VoiceLauncher table listing workflow...');
+					await vscode.commands.executeCommand('natural-language-commands.listTablesVoiceLauncher');
+					return;
+				}
 				vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
 				const result = await vscode.commands.executeCommand(trimmed);
 				if (result !== undefined) {
@@ -369,6 +426,21 @@ export function activate(context: vscode.ExtensionContext) {
 					vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
 				}
 				return;
+			}
+
+			// Check alternatives for VoiceLauncher SQL workflow intent
+			if (altCommands && altCommands.length > 0) {
+				for (const alt of altCommands) {
+					if (alt.command && typeof alt.command === 'string') {
+						const altCmd = alt.command.trim();
+						if (/list (all )?tables( available)? in (my )?(voice ?launcher|voicelauncher)/i.test(altCmd) ||
+							/show (me )?(all )?tables( in)? (my )?(voice ?launcher|voicelauncher)/i.test(altCmd)) {
+							vscode.window.showInformationMessage('Triggering VoiceLauncher table listing workflow (from alternative)...');
+							await vscode.commands.executeCommand('natural-language-commands.listTablesVoiceLauncher');
+							return;
+						}
+					}
+				}
 			}
 
 			// Otherwise, show alternatives if present

@@ -1,3 +1,7 @@
- I would like to have another command where we can ask for a list of all these sidebars  and these would be shown below in text form so we can filter down and go to the one we want and then it would be focused in the sidebar because navigating by voice onto an icon is problematic
+I would like to be able to say the following:
 
-  also can we add similar commands that we've done for the file menu to all the menus on the top like edit select view go run help
+ please list all the tables available in my database VoiceLauncher
+
+  Visual Studio Code should open up a new SQL document and open up the list of connections with VoiceLauncher filtered. Maybe is this something that's feasible?
+
+   I have SQL Server as one of my sidebars/extensions
