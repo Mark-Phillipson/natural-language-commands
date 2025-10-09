@@ -1,0 +1,69 @@
+{
+  "name": "natural-language-commands",
+  "displayName": "Natural Language Commands",
+  "description": " receive natural language commands and perform a Visual Studio code command that matches",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.54.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:natural-language-commands.run"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "natural-language-commands.run",
+        "title": "Natural Language Command...",
+        "category": "Natural Language Commands"
+      },
+      {
+        "command": "natural-language-commands.showAlerts",
+        "title": "Show Alert Messages",
+        "category": "Natural Language Commands"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Natural Language Commands",
+      "properties": {
+        "naturalLanguageCommands.model": {
+          "type": "string",
+          "default": "gpt-4o",
+          "description": "OpenAI model to use for natural language commands (e.g., gpt-4o, gpt-4.1, o3-pro, gpt-3.5-turbo)."
+        },
+        "naturalLanguageCommands.debugShowRawResponse": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the raw LLM response in the UI (for debugging only)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc --watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.54.0",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "openai": "^6.2.0"
+  }
+}
