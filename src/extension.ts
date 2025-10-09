@@ -12,6 +12,148 @@ const HISTORY_KEY = 'nlc.commandHistory';
 const HISTORY_LIMIT = 20;
 
 export function activate(context: vscode.ExtensionContext) {
+	// Simulated Edit menu
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.editMenu', async () => {
+			vscode.window.showWarningMessage('Opening the native Edit menu is not supported by VS Code extensions. Here are common edit actions you can use instead.');
+			const actions = [
+				{ label: 'Undo', command: 'undo' },
+				{ label: 'Redo', command: 'redo' },
+				{ label: 'Cut', command: 'editor.action.clipboardCutAction' },
+				{ label: 'Copy', command: 'editor.action.clipboardCopyAction' },
+				{ label: 'Paste', command: 'editor.action.clipboardPasteAction' },
+				{ label: 'Find', command: 'actions.find' },
+				{ label: 'Replace', command: 'editor.action.startFindReplaceAction' },
+				{ label: 'Select All', command: 'editor.action.selectAll' },
+			];
+			const pick = await vscode.window.showQuickPick(actions, { placeHolder: 'Select an edit action to run:', canPickMany: false });
+			if (pick && pick.command) {
+				vscode.commands.executeCommand(pick.command);
+			}
+		})
+	);
+	// Simulated Selection menu
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.selectionMenu', async () => {
+			vscode.window.showWarningMessage('Opening the native Selection menu is not supported by VS Code extensions. Here are common selection actions you can use instead.');
+			const actions = [
+				{ label: 'Select All', command: 'editor.action.selectAll' },
+				{ label: 'Expand Selection', command: 'editor.action.smartSelect.expand' },
+				{ label: 'Shrink Selection', command: 'editor.action.smartSelect.shrink' },
+				{ label: 'Copy Line Up', command: 'editor.action.copyLinesUpAction' },
+				{ label: 'Copy Line Down', command: 'editor.action.copyLinesDownAction' },
+				{ label: 'Move Line Up', command: 'editor.action.moveLinesUpAction' },
+				{ label: 'Move Line Down', command: 'editor.action.moveLinesDownAction' },
+			];
+			const pick = await vscode.window.showQuickPick(actions, { placeHolder: 'Select a selection action to run:', canPickMany: false });
+			if (pick && pick.command) {
+				vscode.commands.executeCommand(pick.command);
+			}
+		})
+	);
+	// Simulated View menu
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.viewMenu', async () => {
+			vscode.window.showWarningMessage('Opening the native View menu is not supported by VS Code extensions. Here are common view actions you can use instead.');
+			const actions = [
+				{ label: 'Command Palette', command: 'workbench.action.showCommands' },
+				{ label: 'Explorer', command: 'workbench.view.explorer' },
+				{ label: 'Search', command: 'workbench.view.search' },
+				{ label: 'Source Control', command: 'workbench.view.scm' },
+				{ label: 'Run & Debug', command: 'workbench.view.debug' },
+				{ label: 'Extensions', command: 'workbench.view.extensions' },
+				{ label: 'Problems', command: 'workbench.actions.view.problems' },
+				{ label: 'Output', command: 'workbench.action.output.toggleOutput' },
+				{ label: 'Terminal', command: 'workbench.action.terminal.toggleTerminal' },
+			];
+			const pick = await vscode.window.showQuickPick(actions, { placeHolder: 'Select a view action to run:', canPickMany: false });
+			if (pick && pick.command) {
+				vscode.commands.executeCommand(pick.command);
+			}
+		})
+	);
+	// Simulated Go menu
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.goMenu', async () => {
+			vscode.window.showWarningMessage('Opening the native Go menu is not supported by VS Code extensions. Here are common go actions you can use instead.');
+			const actions = [
+				{ label: 'Go to File...', command: 'workbench.action.quickOpen' },
+				{ label: 'Go to Symbol...', command: 'workbench.action.gotoSymbol' },
+				{ label: 'Go to Line...', command: 'workbench.action.gotoLine' },
+				{ label: 'Go Back', command: 'workbench.action.navigateBack' },
+				{ label: 'Go Forward', command: 'workbench.action.navigateForward' },
+				{ label: 'Go to Next Problem', command: 'editor.action.marker.next' },
+				{ label: 'Go to Previous Problem', command: 'editor.action.marker.prev' },
+			];
+			const pick = await vscode.window.showQuickPick(actions, { placeHolder: 'Select a go action to run:', canPickMany: false });
+			if (pick && pick.command) {
+				vscode.commands.executeCommand(pick.command);
+			}
+		})
+	);
+	// Simulated Run menu
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.runMenu', async () => {
+			vscode.window.showWarningMessage('Opening the native Run menu is not supported by VS Code extensions. Here are common run actions you can use instead.');
+			const actions = [
+				{ label: 'Start Debugging', command: 'workbench.action.debug.start' },
+				{ label: 'Run Without Debugging', command: 'workbench.action.debug.run' },
+				{ label: 'Stop Debugging', command: 'workbench.action.debug.stop' },
+				{ label: 'Restart Debugging', command: 'workbench.action.debug.restart' },
+				{ label: 'Run Task...', command: 'workbench.action.tasks.runTask' },
+			];
+			const pick = await vscode.window.showQuickPick(actions, { placeHolder: 'Select a run action to run:', canPickMany: false });
+			if (pick && pick.command) {
+				vscode.commands.executeCommand(pick.command);
+			}
+		})
+	);
+	// Simulated Help menu
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.helpMenu', async () => {
+			vscode.window.showWarningMessage('Opening the native Help menu is not supported by VS Code extensions. Here are common help actions you can use instead.');
+			const actions = [
+				{ label: 'Welcome', command: 'workbench.action.showWelcomePage' },
+				{ label: 'Documentation', command: 'workbench.action.openDocumentationUrl' },
+				{ label: 'Release Notes', command: 'update.showCurrentReleaseNotes' },
+				{ label: 'Keyboard Shortcuts Reference', command: 'workbench.action.openGlobalKeybindings' },
+				{ label: 'Report Issue', command: 'workbench.action.openIssueReporter' },
+				{ label: 'About', command: 'workbench.action.showAboutDialog' },
+			];
+			const pick = await vscode.window.showQuickPick(actions, { placeHolder: 'Select a help action to run:', canPickMany: false });
+			if (pick && pick.command) {
+				vscode.commands.executeCommand(pick.command);
+			}
+		})
+	);
+	// Register a command to show all sidebars and focus the selected one
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.showSidebars', async () => {
+			// Add built-in and popular extension sidebars (e.g., Cursorless)
+			const sidebars = [
+				{ label: 'Explorer', command: 'workbench.view.explorer' },
+				{ label: 'Source Control', command: 'workbench.view.scm' },
+				{ label: 'Run & Debug', command: 'workbench.view.debug' },
+				{ label: 'Extensions', command: 'workbench.view.extensions' },
+				{ label: 'Remote Explorer', command: 'workbench.view.remote' },
+				{ label: 'Testing', command: 'workbench.view.testing' },
+				{ label: 'Outline', command: 'outline.focus' },
+				{ label: 'Comments', command: 'workbench.panel.comments' },
+				{ label: 'Timeline', command: 'timeline.focus' },
+				{ label: 'Notebooks', command: 'notebook.focus' },
+				{ label: 'Cursorless', command: 'workbench.view.extension.cursorless' },
+				// Add more extension sidebars here as needed
+			];
+			// TODO: Optionally load user-custom sidebars from settings
+			const pick = await vscode.window.showQuickPick(sidebars, {
+				placeHolder: 'Select a sidebar to focus:',
+				canPickMany: false
+			});
+			if (pick && pick.command) {
+				vscode.commands.executeCommand(pick.command);
+			}
+		})
+	);
 	// Register a command to simulate the Terminal menu
 	context.subscriptions.push(
 		vscode.commands.registerCommand('natural-language-commands.terminalMenu', async () => {

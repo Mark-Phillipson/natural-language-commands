@@ -1,5 +1,36 @@
 export function mapSidebarCommand(input: string): string | undefined {
+  // DEBUG: Log the input and lower-case version
+  // Remove this in production
+  // eslint-disable-next-line no-console
+  console.log('[NLC DEBUG] mapSidebarCommand input:', input);
+  // eslint-disable-next-line no-console
+  console.log('[NLC DEBUG] mapSidebarCommand lower:', input.toLowerCase());
   const lower = input.toLowerCase();
+  if (/(please )?(show|list|display|see|focus|open|choose|switch)( all)?( my)? sidebars?( list)?( picker)?/.test(lower)) {
+    return 'natural-language-commands.showSidebars';
+  }
+  // Catch-all: if the phrase contains 'sidebar' or 'sidebars', show the picker
+  if (lower.includes('sidebar')) {
+    return 'natural-language-commands.showSidebars';
+  }
+  if (/(open edit menu|show edit menu|edit menu|focus edit menu|edit top menu|edit dropdown)/.test(lower)) {
+    return 'natural-language-commands.editMenu';
+  }
+  if (/(open selection menu|show selection menu|selection menu|focus selection menu|selection top menu|selection dropdown)/.test(lower)) {
+    return 'natural-language-commands.selectionMenu';
+  }
+  if (/(open view menu|show view menu|view menu|focus view menu|view top menu|view dropdown)/.test(lower)) {
+    return 'natural-language-commands.viewMenu';
+  }
+  if (/(open go menu|show go menu|go menu|focus go menu|go top menu|go dropdown)/.test(lower)) {
+    return 'natural-language-commands.goMenu';
+  }
+  if (/(open run menu|show run menu|run menu|focus run menu|run top menu|run dropdown)/.test(lower)) {
+    return 'natural-language-commands.runMenu';
+  }
+  if (/(open help menu|show help menu|help menu|focus help menu|help top menu|help dropdown)/.test(lower)) {
+    return 'natural-language-commands.helpMenu';
+  }
   if (/(open file menu|show file menu|file menu|focus file menu|file dropdown|file top menu)/.test(lower)) {
     return 'natural-language-commands.fileMenu';
   }

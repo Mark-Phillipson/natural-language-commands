@@ -1,16 +1,26 @@
 ## Limitations
 
-**Opening the native File menu (with focus on the first item) is not supported by VS Code extensions.**
+**Opening the native top menus (File, Edit, Selection, View, Go, Run, Terminal, Help) is not supported by VS Code extensions.**
 
-This is a limitation of the VS Code API for security and cross-platform reasons. As a workaround, the extension provides a simulated File menu with common file actions via a QuickPick. You can access this by saying "open the file menu" or similar.
+This is a limitation of the VS Code API for security and cross-platform reasons. As a workaround, the extension provides simulated menus for all of these, each with common actions via a QuickPick. You can access these by saying, for example:
 
-**Opening the native Terminal menu (the top menu) is also not supported by VS Code extensions.**
+- "open the file menu"
+- "show the edit menu"
+- "show the selection menu"
+- "show the view menu"
+- "show the go menu"
+- "show the run menu"
+- "show the terminal menu"
+- "show the help menu"
 
-If you say "open terminal menu" or similar, the extension will show a simulated Terminal menu with common terminal actions. If you say "open terminal" or "show terminal", it will toggle the integrated terminal at the bottom of the window.
+If you say "open terminal" or "show terminal", it will toggle the integrated terminal at the bottom of the window.
+
+**Sidebar navigation:**
+You can say "show all sidebars" or similar to get a filterable list of all sidebars, and the extension will focus the one you select. This is useful for voice navigation.
 
 **Summary:**
-- "Terminal menu" = top menu (simulated)
-- "Open terminal" = integrated terminal
+- "[menu] menu" = top menu (simulated)
+- "open terminal" = integrated terminal
 # Natural Language Commands for VS Code
 
 This extension lets you run VS Code commands using natural language. It integrates with OpenAI models (default: gpt-4o) to interpret your requests and map them to editor actions.
