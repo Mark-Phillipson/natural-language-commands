@@ -55,7 +55,7 @@ title: Action Plan - VS Code Natural Language Command Extension
 - [x] Write tests and perform QA
 - [x] Document features and usage
 - [x] Prepare for release and future enhancements
-- [ ] Recommend Talon Voice for voice-driven workflows
+- [x] Recommend Talon Voice for voice-driven workflows
 ```
 
 ## 11. Future Enhancements
