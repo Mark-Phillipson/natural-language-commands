@@ -9,6 +9,8 @@ This extension is designed to make VS Code more accessible and productive for ev
 
 # Natural Language Commands for VS Code
 
+Created by Mark Phillipson
+
 This extension lets you run VS Code commands using natural language. It integrates with OpenAI models (default: gpt-4o) to interpret your requests and map them to editor actions, simulated menus, and terminal commands.
 
 ## Features
