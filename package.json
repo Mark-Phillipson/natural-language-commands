@@ -43,34 +43,33 @@
     "commands": [
       {
         "command": "natural-language-commands.run",
-        "title": "Natural Language Command...",
-        "category": "Natural Language Commands"
+        "title": "Run Command...",
+        "category": "NLC"
       },
       {
         "command": "natural-language-commands.new",
-        "title": "New Natural Language Command",
-        "category": "Natural Language Commands"
+        "title": "New Command",
+        "category": "NLC"
       },
       {
         "command": "commandHistory.clearHistory",
-        "title": "Clear Command History",
-        "category": "Natural Language Commands"
+        "title": "Clear History",
+        "category": "NLC"
       },
       {
         "command": "commandHistory.reRunCommand",
-        "title": "Re-run Command from History",
-        "category": "Natural Language Commands"
+        "title": "Re-run from History",
+        "category": "NLC"
       },
       {
         "command": "commandHistory.focus",
-        "title": "Show Command History Sidebar",
-        "category": "Natural Language Commands"
-      }
-      ,
+        "title": "Show History Sidebar",
+        "category": "NLC"
+      },
       {
         "command": "natural-language-commands.debugMenu",
-        "title": "Show Debugging Commands",
-        "category": "Natural Language Commands"
+        "title": "Debugging Commands",
+        "category": "NLC"
       }
     ],
     "menus": {
@@ -95,7 +94,7 @@
     },
     "configuration": {
       "type": "object",
-      "title": "Natural Language Commands",
+  "title": "NLC Settings",
       "properties": {
         "naturalLanguageCommands.model": {
           "type": "string",

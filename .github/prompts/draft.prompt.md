@@ -1,1 +1,5 @@
-When I am doing debugging I have voice commands to step through and stop and start but can we also have them available via text commands if I say something like show debugging commands these commands should also include the ability to set breakpoints and remove them and list them and also to show the call stack and variables and all that kind of stuff
+I issued the following command:
+
+ please run a terminal command dotnet build
+
+  but it did not happen instead I got the debug sidebar

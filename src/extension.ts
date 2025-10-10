@@ -12,6 +12,100 @@ const HISTORY_KEY = 'nlc.commandHistory';
 const HISTORY_LIMIT = 20;
 
 export function activate(context: vscode.ExtensionContext) {
+	// Helper: Detect project type in the workspace or current folder
+	async function detectProjectType(): Promise<'dotnet' | 'node' | 'unknown'> {
+		const folders = vscode.workspace.workspaceFolders;
+		if (!folders || folders.length === 0) {
+			return 'unknown';
+		}
+		const folder = folders[0].uri.fsPath;
+		const fs = require('fs');
+		// Check for .csproj or .sln (dotnet)
+		const dotnetFiles = fs.readdirSync(folder).filter((f: string) => f.endsWith('.csproj') || f.endsWith('.sln'));
+		if (dotnetFiles.length > 0) {
+			return 'dotnet';
+		}
+		// Check for package.json (node)
+		if (fs.existsSync(require('path').join(folder, 'package.json'))) {
+			return 'node';
+		}
+		return 'unknown';
+	}
+	// Helper: Remove leading 'please' (case-insensitive, with optional comma/space) from user input for history
+	function stripPleasePrefix(text: string): string {
+		return text.replace(/^\s*please\s*[,:]?\s*/i, '');
+	}
+
+	// Simulated Debug menu
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.debugMenu', async () => {
+			vscode.window.showWarningMessage('Opening the native Debug menu is not supported by VS Code extensions. Here are common debug actions you can use instead.');
+			const actions = [
+				{ label: 'Start Debugging', command: 'workbench.action.debug.start' },
+				{ label: 'Stop Debugging', command: 'workbench.action.debug.stop' },
+				{ label: 'Restart Debugging', command: 'workbench.action.debug.restart' },
+				{ label: 'Step Over', command: 'workbench.action.debug.stepOver' },
+				{ label: 'Step Into', command: 'workbench.action.debug.stepInto' },
+				{ label: 'Step Out', command: 'workbench.action.debug.stepOut' },
+				{ label: 'Continue', command: 'workbench.action.debug.continue' },
+				{ label: 'Pause', command: 'workbench.action.debug.pause' },
+				{ label: 'Toggle Breakpoint', command: 'editor.debug.action.toggleBreakpoint' },
+				{ label: 'Open Breakpoints View', command: 'workbench.debug.action.focusBreakpointsView' },
+				{ label: 'Open Debug Console', command: 'workbench.debug.action.toggleRepl' },
+			];
+			const pick = await vscode.window.showQuickPick(actions, { placeHolder: 'Select a debug action to run:', canPickMany: false });
+			if (pick && pick.command) {
+				vscode.commands.executeCommand(pick.command);
+			}
+		})
+	);
+	// Helper: Translate Unix-style commands to PowerShell equivalents
+	function translateToPowerShell(cmd: string): string {
+		// Only basic translation for common commands
+		const trimmed = cmd.trim();
+		// ls -la, ls -l, ls -a, etc. → ls
+		if (/^ls(\s+-[a-zA-Z]+)?\s*$/i.test(trimmed)) {
+			return 'ls';
+		}
+		// ls -d */ or ls -d .*/ (list only directories)
+		if (/^ls\s+-d\s+\*\/?$/i.test(trimmed) || /^ls\s+-d\s+\.\*\/?$/i.test(trimmed)) {
+			return 'ls -Directory';
+		}
+		// ls --directory or ls --dir
+		if (/^ls\s+--?d(irectory)?\s*$/i.test(trimmed)) {
+			return 'ls -Directory';
+		}
+		// ls -Directory (already correct)
+		if (/^ls\s+-Directory\s*$/i.test(trimmed)) {
+			return trimmed;
+		}
+		// cat file.txt → Get-Content file.txt
+		if (/^cat\s+(.+)/i.test(trimmed)) {
+			return trimmed.replace(/^cat\s+(.+)/i, 'Get-Content $1');
+		}
+		// touch file.txt → New-Item file.txt -ItemType File
+		if (/^touch\s+(.+)/i.test(trimmed)) {
+			return trimmed.replace(/^touch\s+(.+)/i, 'New-Item $1 -ItemType File');
+		}
+		// rm file.txt → Remove-Item file.txt
+		if (/^rm\s+(.+)/i.test(trimmed)) {
+			return trimmed.replace(/^rm\s+(.+)/i, 'Remove-Item $1');
+		}
+		// mv src dest → Move-Item src dest
+		if (/^mv\s+([^\s]+)\s+(.+)/i.test(trimmed)) {
+			return trimmed.replace(/^mv\s+([^\s]+)\s+(.+)/i, 'Move-Item $1 $2');
+		}
+		// cp src dest → Copy-Item src dest
+		if (/^cp\s+([^\s]+)\s+(.+)/i.test(trimmed)) {
+			return trimmed.replace(/^cp\s+([^\s]+)\s+(.+)/i, 'Copy-Item $1 $2');
+		}
+		// grep pattern file → Select-String -Pattern pattern -Path file
+		if (/^grep\s+([^\s]+)\s+(.+)/i.test(trimmed)) {
+			return trimmed.replace(/^grep\s+([^\s]+)\s+(.+)/i, 'Select-String -Pattern $1 -Path $2');
+		}
+		// Default: return as-is
+		return trimmed;
+	}
 		// Command: List all tables in VoiceLauncher database
 		context.subscriptions.push(
 			vscode.commands.registerCommand('natural-language-commands.listTablesVoiceLauncher', async (dbName?: string) => {
@@ -40,7 +134,7 @@ export function activate(context: vscode.ExtensionContext) {
 		);
 	// Simulated Edit menu
 	context.subscriptions.push(
-		vscode.commands.registerCommand('natural-language-commands.editMenu', async () => {
+		vscode.commands.registerCommand('nlc.editMenu', async () => {
 			vscode.window.showWarningMessage('Opening the native Edit menu is not supported by VS Code extensions. Here are common edit actions you can use instead.');
 			const actions = [
 				{ label: 'Undo', command: 'undo' },
@@ -60,7 +154,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	// Simulated Selection menu
 	context.subscriptions.push(
-		vscode.commands.registerCommand('natural-language-commands.selectionMenu', async () => {
+		vscode.commands.registerCommand('nlc.selMenu', async () => {
 			vscode.window.showWarningMessage('Opening the native Selection menu is not supported by VS Code extensions. Here are common selection actions you can use instead.');
 			const actions = [
 				{ label: 'Select All', command: 'editor.action.selectAll' },
@@ -79,7 +173,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	// Simulated View menu
 	context.subscriptions.push(
-		vscode.commands.registerCommand('natural-language-commands.viewMenu', async () => {
+		vscode.commands.registerCommand('nlc.viewMenu', async () => {
 			vscode.window.showWarningMessage('Opening the native View menu is not supported by VS Code extensions. Here are common view actions you can use instead.');
 			const actions = [
 				{ label: 'Command Palette', command: 'workbench.action.showCommands' },
@@ -100,7 +194,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	// Simulated Go menu
 	context.subscriptions.push(
-		vscode.commands.registerCommand('natural-language-commands.goMenu', async () => {
+		vscode.commands.registerCommand('nlc.goMenu', async () => {
 			vscode.window.showWarningMessage('Opening the native Go menu is not supported by VS Code extensions. Here are common go actions you can use instead.');
 			const actions = [
 				{ label: 'Go to File...', command: 'workbench.action.quickOpen' },
@@ -119,7 +213,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	// Simulated Run menu
 	context.subscriptions.push(
-		vscode.commands.registerCommand('natural-language-commands.runMenu', async () => {
+		vscode.commands.registerCommand('nlc.runMenu', async () => {
 			vscode.window.showWarningMessage('Opening the native Run menu is not supported by VS Code extensions. Here are common run actions you can use instead.');
 			const actions = [
 				{ label: 'Start Debugging', command: 'workbench.action.debug.start' },
@@ -136,7 +230,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	// Simulated Help menu
 	context.subscriptions.push(
-		vscode.commands.registerCommand('natural-language-commands.helpMenu', async () => {
+		vscode.commands.registerCommand('nlc.helpMenu', async () => {
 			vscode.window.showWarningMessage('Opening the native Help menu is not supported by VS Code extensions. Here are common help actions you can use instead.');
 			const actions = [
 				{ label: 'Welcome', command: 'workbench.action.showWelcomePage' },
@@ -154,7 +248,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	// Register a command to show all sidebars and focus the selected one
 	context.subscriptions.push(
-		vscode.commands.registerCommand('natural-language-commands.showSidebars', async () => {
+		vscode.commands.registerCommand('nlc.showSidebars', async () => {
 			// Add built-in and popular extension sidebars (e.g., Cursorless)
 			const sidebars = [
 				{ label: 'Explorer', command: 'workbench.view.explorer' },
@@ -182,7 +276,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	// Register a command to simulate the Terminal menu
 	context.subscriptions.push(
-		vscode.commands.registerCommand('natural-language-commands.terminalMenu', async () => {
+		vscode.commands.registerCommand('nlc.termMenu', async () => {
 			vscode.window.showWarningMessage(
 				'Opening the native Terminal menu is not supported by VS Code extensions. Here are common terminal actions you can use instead.'
 			);
@@ -207,7 +301,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	// Register a command to simulate the File menu
 	context.subscriptions.push(
-		vscode.commands.registerCommand('natural-language-commands.fileMenu', async () => {
+		vscode.commands.registerCommand('nlc.fileMenu', async () => {
 			vscode.window.showWarningMessage(
 				'Opening the native File menu is not supported by VS Code extensions. Here are common file actions you can use instead.'
 			);
@@ -307,6 +401,16 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Register the main natural language command (with history QuickPick)
 	const disposable = vscode.commands.registerCommand('natural-language-commands.run', async () => {
+		// Helper: Try to send Ctrl+C to the terminal using VS Code API
+		async function trySendCtrlC() {
+			try {
+				// VS Code API for sending key sequences (since 1.64)
+				await vscode.commands.executeCommand('workbench.action.terminal.sendSequence', { text: '\u0003' });
+				vscode.window.showInformationMessage('Sent Ctrl+C to the terminal to interrupt the running process.');
+			} catch (e) {
+				vscode.window.showWarningMessage('Could not programmatically send Ctrl+C. Please manually stop the process in the terminal.');
+			}
+		}
 			vscode.window.showInformationMessage('[NLC DEBUG] Handler triggered for user input.');
 		// Get history from globalState and trim all entries
 		let history: string[] = (context.globalState.get<string[]>(HISTORY_KEY) || []).map(cmd => cmd.trim());
@@ -339,16 +443,19 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.window.showInformationMessage('No command entered.');
 			return;
 		}
-	// Update history: add to top, remove duplicates, trim to limit (all trimmed)
-	const trimmedInput = userInput.trim();
+	// Remove leading 'please' (case-insensitive, with optional comma/space) from user input for history
+	function stripPleasePrefix(text: string): string {
+		return text.replace(/^\s*please\s*[,:]?\s*/i, '');
+	}
+	const trimmedInput = stripPleasePrefix(userInput.trim());
 	history = [trimmedInput, ...history.filter(cmd => cmd !== trimmedInput)].slice(0, HISTORY_LIMIT);
 	await context.globalState.update(HISTORY_KEY, history);
-		// Add to session sidebar history
-		commandHistoryProvider.addCommand({
-			label: userInput.trim(),
-			time: new Date(),
-			parameters: '' // You can enhance this to capture parameters if needed
-		});
+	// Add to session sidebar history
+	commandHistoryProvider.addCommand({
+		label: trimmedInput,
+		time: new Date(),
+		parameters: '' // You can enhance this to capture parameters if needed
+	});
 
 		try {
 			const apiKey = process.env.OPENAI_API_KEY;
@@ -434,7 +541,47 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
-			// Check alternatives for VoiceLauncher SQL workflow intent
+			// If parsed.terminal is present, run it in the integrated terminal
+			if (parsed.terminal && typeof parsed.terminal === 'string' && parsed.terminal.trim().length > 0) {
+				let terminalCommand = parsed.terminal.trim();
+				// If the user wants to cancel/stop/interrupt a running process, try to send Ctrl+C
+				if (/^(ctrl\+c|cancel|stop|interrupt|terminate|kill|shut ?down|abort|break)( running)?( command| process| task| job| terminal)?/i.test(terminalCommand)) {
+					await trySendCtrlC();
+					return;
+				}
+				// Detect build-and-run intent in user input or LLM output
+				const buildRunIntent = /((build|compile)( and)? run|run( and)? build|build then run|build & run|run & build|run application|run the app|build the app|build application|start application|start the app)/i;
+				if (buildRunIntent.test(userInput) || buildRunIntent.test(terminalCommand)) {
+					const projectType = await detectProjectType();
+					if (projectType === 'dotnet') {
+						terminalCommand = 'dotnet build && dotnet run';
+					} else if (projectType === 'node') {
+						terminalCommand = 'npm run build && npm start';
+					}
+				} else if (/^(build|run|test)( the)?( app| application)?$/i.test(terminalCommand)) {
+					// If the command is generic (e.g., 'build the application'), try to pick the right build command
+					const projectType = await detectProjectType();
+					if (projectType === 'dotnet') {
+						terminalCommand = 'dotnet build';
+					} else if (projectType === 'node') {
+						terminalCommand = 'npm run build';
+					}
+				}
+				// Translate if running in PowerShell
+				if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
+					terminalCommand = translateToPowerShell(terminalCommand);
+				}
+				let terminal = vscode.window.activeTerminal;
+				if (!terminal) {
+					terminal = vscode.window.createTerminal('NLC Terminal');
+				}
+				terminal.show();
+				terminal.sendText(terminalCommand, true);
+				vscode.window.showInformationMessage(`Running in terminal: ${terminalCommand}`);
+				return;
+			}
+
+			// Check alternatives for VoiceLauncher SQL workflow intent and terminal commands
 			if (altCommands && altCommands.length > 0) {
 				for (const alt of altCommands) {
 					if (alt.command && typeof alt.command === 'string') {
@@ -445,6 +592,21 @@ export function activate(context: vscode.ExtensionContext) {
 							await vscode.commands.executeCommand('natural-language-commands.listTablesVoiceLauncher');
 							return;
 						}
+					}
+					// If alternative has a terminal command, run it
+					if (alt.terminal && typeof alt.terminal === 'string' && alt.terminal.trim().length > 0) {
+						let terminalCommand = alt.terminal.trim();
+						if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
+							terminalCommand = translateToPowerShell(terminalCommand);
+						}
+						let terminal = vscode.window.activeTerminal;
+						if (!terminal) {
+							terminal = vscode.window.createTerminal('NLC Terminal');
+						}
+						terminal.show();
+						terminal.sendText(terminalCommand, true);
+						vscode.window.showInformationMessage(`Running in terminal: ${terminalCommand}`);
+						return;
 					}
 				}
 			}
@@ -481,12 +643,21 @@ export function activate(context: vscode.ExtensionContext) {
 									} else {
 										vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
 									}
+									return;
 								} else if (selected.terminal && selected.terminal.trim().length > 0) {
-									const trimmed = selected.terminal.trim();
-									vscode.window.showInformationMessage(`(Simulated) Would execute terminal command: ${trimmed}`);
-									// Add terminal execution logic here if needed
+									let trimmed = selected.terminal.trim();
+									if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
+										trimmed = translateToPowerShell(trimmed);
+									}
+									let terminal = vscode.window.activeTerminal;
+									if (!terminal) {
+										terminal = vscode.window.createTerminal('NLC Terminal');
+									}
+									terminal.show();
+									terminal.sendText(trimmed, true);
+									vscode.window.showInformationMessage(`Running in terminal: ${trimmed}`);
+									return;
 								}
-								return;
 							}
 						}
 
@@ -534,12 +705,13 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.window.showInformationMessage('No command entered.');
 			return;
 		}
-		// Update history: add to top, remove duplicates, trim to limit
-		history = [userInput, ...history.filter(cmd => cmd !== userInput)].slice(0, HISTORY_LIMIT);
+		// Remove leading 'please' (case-insensitive, with optional comma/space) from user input for history
+		const trimmedInput = stripPleasePrefix(userInput.trim());
+		history = [trimmedInput, ...history.filter(cmd => cmd !== trimmedInput)].slice(0, HISTORY_LIMIT);
 		await context.globalState.update(HISTORY_KEY, history);
 		// Add to session sidebar history
 		commandHistoryProvider.addCommand({
-			label: userInput.trim(),
+			label: trimmedInput,
 			time: new Date(),
 			parameters: '' // You can enhance this to capture parameters if needed
 		});
@@ -587,6 +759,22 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
+			// If parsed.terminal is present, run it in the integrated terminal
+			if (parsed.terminal && typeof parsed.terminal === 'string' && parsed.terminal.trim().length > 0) {
+				let terminalCommand = parsed.terminal.trim();
+				if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
+					terminalCommand = translateToPowerShell(terminalCommand);
+				}
+				let terminal = vscode.window.activeTerminal;
+				if (!terminal) {
+					terminal = vscode.window.createTerminal('NLC Terminal');
+				}
+				terminal.show();
+				terminal.sendText(terminalCommand, true);
+				vscode.window.showInformationMessage(`Running in terminal: ${terminalCommand}`);
+				return;
+			}
+
 			// Otherwise, show alternatives if present
 			if (altCommands && altCommands.length > 0) {
 				type AltCommand = { command?: string; terminal?: string; description?: string };
@@ -619,12 +807,18 @@ export function activate(context: vscode.ExtensionContext) {
 						} else {
 							vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
 						}
+						return;
 					} else if (selected.terminal && selected.terminal.trim().length > 0) {
 						const trimmed = selected.terminal.trim();
-						vscode.window.showInformationMessage(`(Simulated) Would execute terminal command: ${trimmed}`);
-						// Add terminal execution logic here if needed
+						let terminal = vscode.window.activeTerminal;
+						if (!terminal) {
+							terminal = vscode.window.createTerminal('NLC Terminal');
+						}
+						terminal.show();
+						terminal.sendText(trimmed, true);
+						vscode.window.showInformationMessage(`Running in terminal: ${trimmed}`);
+						return;
 					}
-					return;
 				}
 			}
 
