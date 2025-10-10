@@ -1,0 +1,1 @@
+ also the rest of the documentation that is shown  needs updating since we've made quite a few changes and a lot more commands that need to be listed

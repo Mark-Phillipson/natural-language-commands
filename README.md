@@ -1,51 +1,97 @@
-## Limitations
+## Accessibility & Productivity
 
-**Opening the native top menus (File, Edit, Selection, View, Go, Run, Terminal, Help) is not supported by VS Code extensions.**
+This extension is designed to make VS Code more accessible and productive for everyone:
 
-This is a limitation of the VS Code API for security and cross-platform reasons. As a workaround, the extension provides simulated menus for all of these, each with common actions via a QuickPick. You can access these by saying, for example:
+- **Accessibility:** Users who have difficulty remembering command names, keyboard shortcuts, or menu navigation can simply use natural language to perform actions. This is especially helpful for people with less-than-perfect memory or cognitive challenges.
+- **Productivity:** No need to memorize complex key combinations or search through menus—just describe what you want to do in plain English.
+- **Discoverability:** The extension’s command history and example sidebar make it easy to recall and reuse previous actions, further reducing cognitive load.
 
-- "open the file menu"
-- "show the edit menu"
-- "show the selection menu"
-- "show the view menu"
-- "show the go menu"
-- "show the run menu"
-- "show the terminal menu"
-- "show the help menu"
 
-If you say "open terminal" or "show terminal", it will toggle the integrated terminal at the bottom of the window.
-
-**Sidebar navigation:**
-You can say "show all sidebars" or similar to get a filterable list of all sidebars, and the extension will focus the one you select. This is useful for voice navigation.
-
-**Summary:**
-- "[menu] menu" = top menu (simulated)
-- "open terminal" = integrated terminal
 # Natural Language Commands for VS Code
 
-This extension lets you run VS Code commands using natural language. It integrates with OpenAI models (default: gpt-4o) to interpret your requests and map them to editor actions.
+This extension lets you run VS Code commands using natural language. It integrates with OpenAI models (default: gpt-4o) to interpret your requests and map them to editor actions, simulated menus, and terminal commands.
 
 ## Features
 - Run VS Code or terminal commands using plain English
+- Simulated menus for File, Edit, Selection, View, Go, Run, Terminal, and Help (via QuickPick)
+- Sidebar and activity bar navigation (including custom sidebars)
+- Command history and example commands sidebar
 - Choose your preferred OpenAI model
 - Debug mode to show raw LLM responses
-- Keyboard-friendly command alternatives
 - Status bar alert icon for notifications
+- PowerShell translation for terminal commands
+- Confirmation and alternatives for low-confidence actions
+
+## Usage
+
+### Example Natural Language Commands
+- "Open the file menu"
+- "Show the edit menu"
+- "Show all sidebars"
+- "Open the terminal and run my tests"
+- "Show command history sidebar"
+- "Find all TODO comments in the workspace"
+- "Open the explorer"
+- "Show me my extensions"
+- "Switch to the source control view"
+- "Open settings in JSON view"
+- "Create a new file called hello.txt"
+- "Show me the output panel"
+- "Run the build task"
+- "What is the current git branch?"
+- "Show me the problems panel"
+- "Open the debug console"
+- "Show me the command palette"
+- "Clear the command history"
+
+### Simulated Menus
+Native top menus (File, Edit, Selection, View, Go, Run, Terminal, Help) cannot be opened directly. Instead, this extension provides simulated menus via QuickPick with common actions for each menu. Just say or type e.g. "open the file menu" or "show the edit menu".
+
+### Sidebar Navigation
+Say "show all sidebars" to get a filterable list of all sidebars (Explorer, Source Control, Run & Debug, Extensions, etc.) and focus the one you select.
+
+### Command History
+The extension keeps a session-based and persistent command history, accessible via the custom sidebar. You can also view example commands in a dedicated sidebar view.
+
+## Extension Commands
+
+| Command ID                                      | Title / Description                       |
+|-------------------------------------------------|-------------------------------------------|
+| natural-language-commands.run                   | Run Command... (main entry, with history) |
+| natural-language-commands.new                   | New Command (direct input)                |
+| natural-language-commands.debugMenu             | Debugging Commands (simulated menu)       |
+| natural-language-commands.listTablesVoiceLauncher| List all tables in VoiceLauncher DB       |
+| natural-language-commands.examples              | Show example natural language commands    |
+| nlc.fileMenu                                    | Simulated File menu                       |
+| nlc.editMenu                                    | Simulated Edit menu                       |
+| nlc.selMenu                                     | Simulated Selection menu                  |
+| nlc.viewMenu                                    | Simulated View menu                       |
+| nlc.goMenu                                      | Simulated Go menu                         |
+| nlc.runMenu                                     | Simulated Run menu                        |
+| nlc.termMenu                                    | Simulated Terminal menu                   |
+| nlc.helpMenu                                    | Simulated Help menu                       |
+| nlc.showSidebars                                | Show all sidebars/activity bar items      |
+| commandHistory.focus                            | Show History Sidebar                      |
+| commandHistory.clearHistory                     | Clear History                             |
+| commandHistory.reRunCommand                     | Re-run from History                       |
+| commandHistory.deleteItem                       | Delete from History                       |
 
 ## Extension Settings
 - `naturalLanguageCommands.model`: OpenAI model to use (default: gpt-4o)
 - `naturalLanguageCommands.debugShowRawResponse`: Show raw LLM response (default: false)
 
-## Known Issues
-- None currently reported
+## Limitations
+- Native top menus cannot be opened (simulated via QuickPick only)
+- Requires valid OpenAI API key in `.env`
+- Voice input is not yet implemented
 
 ## Release Notes
 ### 1.0.0
-Initial release with core features
+Initial release with core features and simulated menus.
 
 ## For more information
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+- [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
+- [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
 
 **Enjoy!**
