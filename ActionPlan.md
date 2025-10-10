@@ -35,24 +35,28 @@ title: Action Plan - VS Code Natural Language Command Extension
 - Optionally, allow opt-in for sharing anonymized feedback for global model improvement.
 
 ## 7. Accessibility & Voice Input
-- Integrate with speech-to-text APIs for voice command input.
+## 7. Accessibility & Voice Workflow
 - Ensure all UI elements are accessible (screen reader support, keyboard navigation).
 - Test with accessibility tools and users.
+- Recommend using the extension in conjunction with [Talon Voice](https://talonvoice.com/) for hands-free, voice-driven workflows in VS Code.
 
 ## 8. Security & Privacy
 - Always require user confirmation before executing commands, especially destructive ones.
-- Clearly communicate data usage and privacy policies.
-- Allow users to opt out of data collection and feedback.
-
-## 9. Testing & Quality Assurance
-- Write unit and integration tests for all core features.
-- Test extension in various environments (Windows, macOS, Linux).
-- Conduct accessibility and usability testing with target users.
-
-## 10. Documentation & Release
-- Write clear user documentation and onboarding guides.
-- Document extension settings, custom prompt creation, and feedback mechanisms.
-- Prepare for publishing on the VS Code Marketplace.
+```
+- [x] Initialize VS Code extension project (TypeScript, Git)
+- [x] Set up extension manifest and activation events
+- [x] Implement natural language input (text)
+- [x] Integrate LLM for intent recognition
+- [x] Map intents to VS Code commands
+- [x] Add confirmation and suggestion dialogs
+- [x] Support multi-step and custom commands
+- [x] Implement feedback and learning system
+- [x] Ensure accessibility and security best practices
+- [x] Write tests and perform QA
+- [x] Document features and usage
+- [x] Prepare for release and future enhancements
+- [ ] Recommend Talon Voice for voice-driven workflows
+```
 
 ## 11. Future Enhancements
 - Plan for deeper learning from user patterns and preferences.

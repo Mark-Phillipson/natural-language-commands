@@ -40,10 +40,8 @@ This extension lets you run VS Code commands using natural language. It integrat
 - "Create a new file called hello.txt"
 - "Show me the output panel"
 - "Run the build task"
-- "What is the current git branch?"
 - "Show me the problems panel"
 - "Open the debug console"
-- "Show me the command palette"
 - "Clear the command history"
 
 ### Simulated Menus
@@ -85,7 +83,9 @@ The extension keeps a session-based and persistent command history, accessible v
 ## Limitations
 - Native top menus cannot be opened (simulated via QuickPick only)
 - Requires valid OpenAI API key in `.env`
-- Voice input is not yet implemented
+
+## Voice Control
+This extension can be used in conjunction with [Talon Voice](https://talonvoice.com/) to further enhance your workflow with hands-free, voice-driven commands in VS Code.
 
 ## Release Notes
 ### 1.0.0
