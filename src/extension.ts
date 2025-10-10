@@ -1,15 +1,16 @@
-	// ...existing code...
-import * as vscode from 'vscode';
-import * as path from 'path';
-import * as dotenv from 'dotenv';
-import { getLLMResult, LLMResult } from './llm';
-import { mapSidebarCommand } from './sidebarMap';
-import { NotificationManager } from './notificationManager';
-import { CommandHistoryProvider, CommandHistoryItem } from './commandHistoryProvider';
 
-// Helper for command history
-const HISTORY_KEY = 'nlc.commandHistory';
-const HISTORY_LIMIT = 20;
+
+	import * as vscode from 'vscode';
+	import * as path from 'path';
+	import * as dotenv from 'dotenv';
+	import { getLLMResult, LLMResult } from './llm';
+	import { mapSidebarCommand } from './sidebarMap';
+	import { NotificationManager } from './notificationManager';
+	import { CommandHistoryProvider, CommandHistoryItem } from './commandHistoryProvider';
+
+	// Helper for command history
+	const HISTORY_KEY = 'nlc.commandHistory';
+	const HISTORY_LIMIT = 20;
 
 export function activate(context: vscode.ExtensionContext) {
 	// Helper: Detect project type in the workspace or current folder
@@ -400,7 +401,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const notificationManager = new NotificationManager(context);
 
 	// Register the main natural language command (with history QuickPick)
-	const disposable = vscode.commands.registerCommand('natural-language-commands.run', async () => {
+	const disposable = vscode.commands.registerCommand('natural-language-commands.run', async (arg?: any) => {
 		// Helper: Try to send Ctrl+C to the terminal using VS Code API
 		async function trySendCtrlC() {
 			try {
@@ -411,51 +412,68 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.window.showWarningMessage('Could not programmatically send Ctrl+C. Please manually stop the process in the terminal.');
 			}
 		}
-			vscode.window.showInformationMessage('[NLC DEBUG] Handler triggered for user input.');
-		// Get history from globalState and trim all entries
-		let history: string[] = (context.globalState.get<string[]>(HISTORY_KEY) || []).map(cmd => cmd.trim());
-		// Prepare QuickPick items (all trimmed)
-		const quickPickItems: vscode.QuickPickItem[] = [
-			{ label: '$(plus) Enter New Command', alwaysShow: true },
-			...history.map(cmd => ({ label: cmd }))
-		];
-		// Show QuickPick for history/recall
-		const pick = await vscode.window.showQuickPick(quickPickItems, {
-			placeHolder: 'Press ↑ to recall previous commands or select "Enter New Command"',
-			ignoreFocusOut: true,
-		});
+		vscode.window.showInformationMessage('[NLC DEBUG] Handler triggered for user input.');
+		// Get history from globalState and trim all entries, only for strings
+		let history: string[] = (context.globalState.get<string[]>(HISTORY_KEY) || [])
+			.filter(cmd => typeof cmd === 'string')
+			.map(cmd => cmd.trim());
 		let userInput: string | undefined;
-		if (!pick) {
-			return;
-		} else if (pick.label === '$(plus) Enter New Command') {
-			userInput = await vscode.window.showInputBox({
-				prompt: 'Enter a command in natural language (e.g., "Open the terminal and run my tests")',
-				placeHolder: 'Describe what you want to do...'
+		// If called with an argument (e.g., from context menu), extract the string
+		if (arg) {
+			if (typeof arg === 'string') {
+				userInput = arg;
+			} else if (typeof arg === 'object' && arg.label) {
+				userInput = arg.label;
+			} else if (typeof arg === 'object' && arg.item && arg.item.label) {
+				userInput = arg.item.label;
+			}
+		}
+		if (!userInput) {
+			// Prepare QuickPick items (all trimmed)
+			const quickPickItems: vscode.QuickPickItem[] = [
+				{ label: '$(plus) Enter New Command', alwaysShow: true },
+				...history.map(cmd => ({ label: cmd }))
+			];
+			// Show QuickPick for history/recall
+			const pick = await vscode.window.showQuickPick(quickPickItems, {
+				placeHolder: 'Press ↑ to recall previous commands or select "Enter New Command"',
+				ignoreFocusOut: true,
 			});
-		} else {
-			// Picked a history item, allow editing
-			userInput = await vscode.window.showInputBox({
-				prompt: 'Edit and run previous command:',
-				value: pick.label
-			});
+			if (!pick) {
+				return;
+			} else if (pick.label === '$(plus) Enter New Command') {
+				userInput = await vscode.window.showInputBox({
+					prompt: 'Enter a command in natural language (e.g., "Open the terminal and run my tests")',
+					placeHolder: 'Describe what you want to do...'
+				});
+			} else {
+				// Picked a history item, allow editing
+				userInput = await vscode.window.showInputBox({
+					prompt: 'Edit and run previous command:',
+					value: pick.label
+				});
+			}
 		}
 		if (!userInput || userInput.trim().length === 0) {
 			vscode.window.showInformationMessage('No command entered.');
 			return;
 		}
-	// Remove leading 'please' (case-insensitive, with optional comma/space) from user input for history
-	function stripPleasePrefix(text: string): string {
-		return text.replace(/^\s*please\s*[,:]?\s*/i, '');
-	}
-	const trimmedInput = stripPleasePrefix(userInput.trim());
-	history = [trimmedInput, ...history.filter(cmd => cmd !== trimmedInput)].slice(0, HISTORY_LIMIT);
-	await context.globalState.update(HISTORY_KEY, history);
-	// Add to session sidebar history
-	commandHistoryProvider.addCommand({
-		label: trimmedInput,
-		time: new Date(),
-		parameters: '' // You can enhance this to capture parameters if needed
-	});
+		// Remove leading 'please' (case-insensitive, with optional comma/space) from user input for history
+		function stripPleasePrefix(text: string): string {
+			return text.replace(/^\s*please\s*[,:]?\s*/i, '');
+		}
+		const trimmedInput = stripPleasePrefix(userInput.trim());
+		// Only add to history if not already the most recent entry
+		if (history.length === 0 || history[0] !== trimmedInput) {
+			history = [trimmedInput, ...history.filter(cmd => cmd !== trimmedInput)].slice(0, HISTORY_LIMIT);
+			await context.globalState.update(HISTORY_KEY, history);
+			// Add to session sidebar history
+			commandHistoryProvider.addCommand({
+				label: trimmedInput,
+				time: new Date(),
+				parameters: '' // You can enhance this to capture parameters if needed
+			});
+		}
 
 		try {
 			const apiKey = process.env.OPENAI_API_KEY;

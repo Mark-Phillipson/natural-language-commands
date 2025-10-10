@@ -67,6 +67,11 @@
         "category": "NLC"
       },
       {
+        "command": "commandHistory.deleteItem",
+        "title": "Delete from History",
+        "category": "NLC"
+      },
+      {
         "command": "natural-language-commands.debugMenu",
         "title": "Debugging Commands",
         "category": "NLC"
@@ -87,14 +92,17 @@
       "view/item/context": [
         {
           "command": "commandHistory.reRunCommand",
-          "when": "view == commandHistoryView",
-          "group": "inline"
+          "when": "view == commandHistoryView && viewItem == commandHistoryItem"
+        },
+        {
+          "command": "commandHistory.deleteItem",
+          "when": "view == commandHistoryView && viewItem == commandHistoryItem"
         }
       ]
     },
     "configuration": {
       "type": "object",
-  "title": "NLC Settings",
+      "title": "NLC Settings",
       "properties": {
         "naturalLanguageCommands.model": {
           "type": "string",
@@ -109,6 +117,13 @@
       }
     }
   },
+  "keybindings": [
+    {
+      "command": "commandHistory.deleteItem",
+      "key": "delete",
+      "when": "view == commandHistoryView && viewItem == commandHistoryItem && focus"
+    }
+  ],
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
@@ -118,6 +133,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@types/dotenv": "^8.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@types/vscode": "^1.54.0",

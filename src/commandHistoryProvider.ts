@@ -91,7 +91,13 @@ export class CommandHistoryTreeItem extends vscode.TreeItem {
     constructor(public readonly item: CommandHistoryItem) {
         super(item.label, vscode.TreeItemCollapsibleState.None);
         this.description = `${item.time.toLocaleTimeString()}${item.parameters ? ' | ' + item.parameters : ''}`;
-        this.tooltip = `${item.label}\n${item.time.toLocaleString()}${item.parameters ? '\nParams: ' + item.parameters : ''}`;
+        this.tooltip = `Re-run: ${item.label}\n${item.time.toLocaleString()}${item.parameters ? '\nParams: ' + item.parameters : ''}`;
         this.contextValue = 'commandHistoryItem';
+        // Accessibility: always show as actionable
+        this.command = {
+            command: 'commandHistory.reRunCommand',
+            title: 'Re-run from History',
+            arguments: [this]
+        };
     }
 }
