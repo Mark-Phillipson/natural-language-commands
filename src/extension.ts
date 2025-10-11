@@ -7,6 +7,7 @@
 	import { mapSidebarCommand } from './sidebarMap';
 	import { NotificationManager } from './notificationManager';
 	import { CommandHistoryProvider, CommandHistoryItem } from './commandHistoryProvider';
+	import { ChatPanel } from './chatPanel';
 
 	// Helper for command history
 	const HISTORY_KEY = 'nlc.commandHistory';
@@ -524,14 +525,20 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 			const duration = Date.now() - start;
-			vscode.window.showInformationMessage(`LLM response time: ${duration} ms`);
-			// Diagnostic logging for LLM result and intent/command
-			vscode.window.showInformationMessage(`[NLC DEBUG] LLM result: ${JSON.stringify(parsed)}`);
-			vscode.window.showInformationMessage(`[NLC DEBUG] intent: ${parsed?.intent}, command: ${parsed?.command}`);
+			// Diagnostic logging for LLM result - now with multiline display
+			const llmResultSummary = [
+				`LLM Response Time: ${duration} ms`,
+				`Intent: ${parsed?.intent || 'N/A'}`,
+				`Command: ${parsed?.command || 'N/A'}`,
+				`Confidence: ${Math.round((parsed?.confidence || 0) * 100)}%`,
+				`Alternatives: ${parsed?.alternatives?.length || 0}`
+			].join('\n');
+			
+			vscode.window.showInformationMessage(llmResultSummary);
+			
 			if (debugShowRaw && parsed.rawResponse) {
 				vscode.window.showInformationMessage(`Raw LLM response: ${JSON.stringify(parsed.rawResponse)}`);
 			}
-			vscode.window.showInformationMessage(`LLM result: ${JSON.stringify(parsed)}`);
 			// If the LLM intent is to show a notification, add it to the queue
 			if (parsed.intent && /notification|alert|status bar/i.test(parsed.intent)) {
 				notificationManager.addNotification(parsed.intent);
@@ -539,9 +546,10 @@ export function activate(context: vscode.ExtensionContext) {
 			const confidence = parsed.confidence;
 			const altCommands = parsed.alternatives;
 
-			// If parsed.command is present, execute it directly
+			// If parsed.command is present, check confidence before executing
 			if (parsed.command && typeof parsed.command === 'string' && parsed.command.trim().length > 0) {
 				const trimmed = parsed.command.trim();
+				
 				// Custom mapping for VoiceLauncher table listing intent
 				if (/list (all )?tables( available)? in (my )?(voice ?launcher|voicelauncher)/i.test(trimmed) ||
 					/show (me )?(all )?tables( in)? (my )?(voice ?launcher|voicelauncher)/i.test(trimmed)) {
@@ -549,14 +557,53 @@ export function activate(context: vscode.ExtensionContext) {
 					await vscode.commands.executeCommand('natural-language-commands.listTablesVoiceLauncher');
 					return;
 				}
-				vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
-				const result = await vscode.commands.executeCommand(trimmed);
-				if (result !== undefined) {
-					vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+
+				// Check confidence threshold (90%)
+				const CONFIDENCE_THRESHOLD = 0.9;
+				if (confidence < CONFIDENCE_THRESHOLD) {
+					// Low confidence: show confirmation prompt
+					const action = await vscode.window.showWarningMessage(
+						`I'm ${Math.round(confidence * 100)}% confident this is what you want.\n\nCommand: ${trimmed}\nIntent: ${parsed.intent || 'N/A'}`,
+						{ modal: true },
+						'Execute Anyway',
+						'Show Alternatives',
+						'Cancel'
+					);
+
+					if (action === 'Execute Anyway') {
+						// User confirmed, execute the command
+						vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
+						const result = await vscode.commands.executeCommand(trimmed);
+						if (result !== undefined) {
+							vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+						} else {
+							vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+						}
+						return;
+					} else if (action === 'Show Alternatives') {
+						// Show alternatives if available
+						if (altCommands && altCommands.length > 0) {
+							// Fall through to alternatives section below
+						} else {
+							vscode.window.showInformationMessage('No alternatives available.');
+							return;
+						}
+					} else {
+						// User cancelled
+						vscode.window.showInformationMessage('Command execution cancelled.');
+						return;
+					}
 				} else {
-					vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+					// High confidence: execute immediately
+					vscode.window.showInformationMessage(`Executing command (${Math.round(confidence * 100)}% confidence): ${trimmed}`);
+					const result = await vscode.commands.executeCommand(trimmed);
+					if (result !== undefined) {
+						vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+					} else {
+						vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+					}
+					return;
 				}
-				return;
 			}
 
 			// If parsed.terminal is present, run it in the integrated terminal
@@ -589,14 +636,53 @@ export function activate(context: vscode.ExtensionContext) {
 				if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
 					terminalCommand = translateToPowerShell(terminalCommand);
 				}
-				let terminal = vscode.window.activeTerminal;
-				if (!terminal) {
-					terminal = vscode.window.createTerminal('NLC Terminal');
+
+				// Check confidence threshold for terminal commands
+				const CONFIDENCE_THRESHOLD = 0.9;
+				if (confidence < CONFIDENCE_THRESHOLD) {
+					// Low confidence: show confirmation prompt
+					const action = await vscode.window.showWarningMessage(
+						`I'm ${Math.round(confidence * 100)}% confident about this terminal command.\n\nCommand: ${terminalCommand}\nIntent: ${parsed.intent || 'N/A'}`,
+						{ modal: true },
+						'Execute Anyway',
+						'Show Alternatives',
+						'Cancel'
+					);
+
+					if (action === 'Execute Anyway') {
+						// User confirmed, execute the terminal command
+						let terminal = vscode.window.activeTerminal;
+						if (!terminal) {
+							terminal = vscode.window.createTerminal('NLC Terminal');
+						}
+						terminal.show();
+						terminal.sendText(terminalCommand, true);
+						vscode.window.showInformationMessage(`Running in terminal: ${terminalCommand}`);
+						return;
+					} else if (action === 'Show Alternatives') {
+						// Show alternatives if available
+						if (altCommands && altCommands.length > 0) {
+							// Fall through to alternatives section below
+						} else {
+							vscode.window.showInformationMessage('No alternatives available.');
+							return;
+						}
+					} else {
+						// User cancelled
+						vscode.window.showInformationMessage('Terminal command execution cancelled.');
+						return;
+					}
+				} else {
+					// High confidence: execute immediately
+					let terminal = vscode.window.activeTerminal;
+					if (!terminal) {
+						terminal = vscode.window.createTerminal('NLC Terminal');
+					}
+					terminal.show();
+					terminal.sendText(terminalCommand, true);
+					vscode.window.showInformationMessage(`Running in terminal (${Math.round(confidence * 100)}% confidence): ${terminalCommand}`);
+					return;
 				}
-				terminal.show();
-				terminal.sendText(terminalCommand, true);
-				vscode.window.showInformationMessage(`Running in terminal: ${terminalCommand}`);
-				return;
 			}
 
 			// Check alternatives for VoiceLauncher SQL workflow intent and terminal commands
@@ -752,11 +838,20 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 			const duration = Date.now() - start;
-			vscode.window.showInformationMessage(`LLM response time: ${duration} ms`);
+			// Diagnostic logging for LLM result - now with multiline display
+			const llmResultSummary = [
+				`LLM Response Time: ${duration} ms`,
+				`Intent: ${parsed?.intent || 'N/A'}`,
+				`Command: ${parsed?.command || 'N/A'}`,
+				`Confidence: ${Math.round((parsed?.confidence || 0) * 100)}%`,
+				`Alternatives: ${parsed?.alternatives?.length || 0}`
+			].join('\n');
+			
+			vscode.window.showInformationMessage(llmResultSummary);
+			
 			if (debugShowRaw && parsed.rawResponse) {
 				vscode.window.showInformationMessage(`Raw LLM response: ${JSON.stringify(parsed.rawResponse)}`);
 			}
-			vscode.window.showInformationMessage(`LLM result: ${JSON.stringify(parsed)}`);
 			// If the LLM intent is to show a notification, add it to the queue
 			if (parsed.intent && /notification|alert|status bar/i.test(parsed.intent)) {
 				notificationManager.addNotification(parsed.intent);
@@ -764,17 +859,56 @@ export function activate(context: vscode.ExtensionContext) {
 			const confidence = parsed.confidence;
 			const altCommands = parsed.alternatives;
 
-			// If parsed.command is present, execute it directly
+			// If parsed.command is present, check confidence before executing
 			if (parsed.command && typeof parsed.command === 'string' && parsed.command.trim().length > 0) {
 				const trimmed = parsed.command.trim();
-				vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
-				const result = await vscode.commands.executeCommand(trimmed);
-				if (result !== undefined) {
-					vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+
+				// Check confidence threshold (90%)
+				const CONFIDENCE_THRESHOLD = 0.9;
+				if (confidence < CONFIDENCE_THRESHOLD) {
+					// Low confidence: show confirmation prompt
+					const action = await vscode.window.showWarningMessage(
+						`I'm ${Math.round(confidence * 100)}% confident this is what you want.\n\nCommand: ${trimmed}\nIntent: ${parsed.intent || 'N/A'}`,
+						{ modal: true },
+						'Execute Anyway',
+						'Show Alternatives',
+						'Cancel'
+					);
+
+					if (action === 'Execute Anyway') {
+						// User confirmed, execute the command
+						vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
+						const result = await vscode.commands.executeCommand(trimmed);
+						if (result !== undefined) {
+							vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+						} else {
+							vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+						}
+						return;
+					} else if (action === 'Show Alternatives') {
+						// Show alternatives if available
+						if (altCommands && altCommands.length > 0) {
+							// Fall through to alternatives section below
+						} else {
+							vscode.window.showInformationMessage('No alternatives available.');
+							return;
+						}
+					} else {
+						// User cancelled
+						vscode.window.showInformationMessage('Command execution cancelled.');
+						return;
+					}
 				} else {
-					vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+					// High confidence: execute immediately
+					vscode.window.showInformationMessage(`Executing command (${Math.round(confidence * 100)}% confidence): ${trimmed}`);
+					const result = await vscode.commands.executeCommand(trimmed);
+					if (result !== undefined) {
+						vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+					} else {
+						vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+					}
+					return;
 				}
-				return;
 			}
 
 			// If parsed.terminal is present, run it in the integrated terminal
@@ -783,14 +917,53 @@ export function activate(context: vscode.ExtensionContext) {
 				if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
 					terminalCommand = translateToPowerShell(terminalCommand);
 				}
-				let terminal = vscode.window.activeTerminal;
-				if (!terminal) {
-					terminal = vscode.window.createTerminal('NLC Terminal');
+
+				// Check confidence threshold for terminal commands
+				const CONFIDENCE_THRESHOLD = 0.9;
+				if (confidence < CONFIDENCE_THRESHOLD) {
+					// Low confidence: show confirmation prompt
+					const action = await vscode.window.showWarningMessage(
+						`I'm ${Math.round(confidence * 100)}% confident about this terminal command.\n\nCommand: ${terminalCommand}\nIntent: ${parsed.intent || 'N/A'}`,
+						{ modal: true },
+						'Execute Anyway',
+						'Show Alternatives',
+						'Cancel'
+					);
+
+					if (action === 'Execute Anyway') {
+						// User confirmed, execute the terminal command
+						let terminal = vscode.window.activeTerminal;
+						if (!terminal) {
+							terminal = vscode.window.createTerminal('NLC Terminal');
+						}
+						terminal.show();
+						terminal.sendText(terminalCommand, true);
+						vscode.window.showInformationMessage(`Running in terminal: ${terminalCommand}`);
+						return;
+					} else if (action === 'Show Alternatives') {
+						// Show alternatives if available
+						if (altCommands && altCommands.length > 0) {
+							// Fall through to alternatives section below
+						} else {
+							vscode.window.showInformationMessage('No alternatives available.');
+							return;
+						}
+					} else {
+						// User cancelled
+						vscode.window.showInformationMessage('Terminal command execution cancelled.');
+						return;
+					}
+				} else {
+					// High confidence: execute immediately
+					let terminal = vscode.window.activeTerminal;
+					if (!terminal) {
+						terminal = vscode.window.createTerminal('NLC Terminal');
+					}
+					terminal.show();
+					terminal.sendText(terminalCommand, true);
+					vscode.window.showInformationMessage(`Running in terminal (${Math.round(confidence * 100)}% confidence): ${terminalCommand}`);
+					return;
 				}
-				terminal.show();
-				terminal.sendText(terminalCommand, true);
-				vscode.window.showInformationMessage(`Running in terminal: ${terminalCommand}`);
-				return;
 			}
 
 			// Otherwise, show alternatives if present
@@ -856,6 +1029,12 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(newDisposable);
+
+	// Register chat command
+	const chatDisposable = vscode.commands.registerCommand('natural-language-commands.chat', () => {
+		ChatPanel.createOrShow(context.extensionUri, context);
+	});
+	context.subscriptions.push(chatDisposable);
 }
 
 
