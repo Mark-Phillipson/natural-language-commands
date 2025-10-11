@@ -582,12 +582,12 @@ export class ChatPanel {
 				});
 
 				userInput.value = '';
-				sendButton.disabled = true;
 			}
 
 			sendButton.addEventListener('click', sendMessage);
-			userInput.addEventListener('keypress', (e) => {
+			userInput.addEventListener('keydown', (e) => {
 				if (e.key === 'Enter') {
+					e.preventDefault();
 					sendMessage();
 				}
 			});
@@ -603,7 +603,6 @@ export class ChatPanel {
 							message.payload.commandResult,
 							message.payload.showActions
 						);
-						sendButton.disabled = false;
 						break;
 					case 'setThinking':
 						setThinking(message.payload.thinking);
