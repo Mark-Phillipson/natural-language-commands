@@ -19,6 +19,8 @@ export function activate(context: vscode.ExtensionContext) {
 		const folders = vscode.workspace.workspaceFolders;
 		if (!folders || folders.length === 0) {
 			return 'unknown';
+
+
 		}
 		const folder = folders[0].uri.fsPath;
 		const fs = require('fs');
@@ -586,11 +588,15 @@ export function activate(context: vscode.ExtensionContext) {
 							// Fall through to alternatives section below
 						} else {
 							vscode.window.showInformationMessage('No alternatives available.');
+							// Open chat panel for clarification
+							ChatPanel.createOrShow(context.extensionUri, context, userInput);
 							return;
 						}
 					} else {
 						// User cancelled
 						vscode.window.showInformationMessage('Command execution cancelled.');
+						// Open chat panel for clarification
+						ChatPanel.createOrShow(context.extensionUri, context, userInput);
 						return;
 					}
 				} else {
@@ -790,6 +796,8 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			} else {
 				vscode.window.showInformationMessage('[NLC FALLBACK] Sidebar fallback not triggered. No mapping found.');
+				// If no command, terminal, or mapping, open chat panel for clarification
+				ChatPanel.createOrShow(context.extensionUri, context, userInput);
 			}
 		}
 		catch (err: any) {
@@ -1031,10 +1039,17 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(newDisposable);
 
 	// Register chat command
-	const chatDisposable = vscode.commands.registerCommand('natural-language-commands.chat', () => {
-		ChatPanel.createOrShow(context.extensionUri, context);
+	const chatDisposable = vscode.commands.registerCommand('natural-language-commands.chat', (initialMessage?: string) => {
+		ChatPanel.createOrShow(context.extensionUri, context, initialMessage);
 	});
 	context.subscriptions.push(chatDisposable);
+
+
+
+
+
+
+
 }
 
 

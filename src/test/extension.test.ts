@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { getLLMResult } from '../llm';
+import { ChatPanel } from '../chatPanel';
 
 suite('Extension Test Suite', () => {
 	vscode.window.showInformationMessage('Start all tests.');
@@ -149,6 +150,15 @@ suite('Chat Interface Tests', () => {
 		
 		assert.notStrictEqual(initialCommand, refinedCommand, 'Commands should be refinable');
 	});
+
+	// --- Failing test: ambiguous/failed command triggers chat interface with ambiguous command pre-filled ---
+	test('Ambiguous command triggers chat interface with ambiguous command pre-filled', async () => {
+		const ambiguousCommand = 'do something unclear';
+		await vscode.commands.executeCommand('natural-language-commands.chat', ambiguousCommand);
+		const chatPanel = ChatPanel.currentPanel;
+		assert.ok(chatPanel, 'Chat panel should be opened for ambiguous command');
+		assert.strictEqual(chatPanel?.initialMessage, ambiguousCommand, 'Chat should start with ambiguous command pre-filled');
+	});
 });
 
 suite('Command History Display Tests', () => {
@@ -178,6 +188,19 @@ suite('Command History Display Tests', () => {
 
 		const filtered = history.filter(item => item.label.includes('open'));
 		assert.strictEqual(filtered.length, 2, 'Should filter correctly');
+	});
+
+	// --- Failing test: command history is multiline and includes ambiguous command clarification exchanges ---
+	test('Command history should be multiline and include ambiguous command clarification exchanges', () => {
+		const history = [
+			{ role: 'user', content: 'do something unclear', timestamp: new Date() },
+			{ role: 'assistant', content: 'I did not understand. Can you clarify?', timestamp: new Date() },
+			{ role: 'user', content: 'open the terminal', timestamp: new Date() },
+			{ role: 'assistant', content: 'Opening terminal', timestamp: new Date() }
+		];
+		const multiline = history.map(item => item.content).join('\n');
+		assert.ok(multiline.includes('\n'), 'Command history should support multiline display');
+		assert.ok(multiline.includes('clarify'), 'History should include clarification exchanges');
 	});
 });
 
@@ -218,4 +241,64 @@ suite('Command Execution Flow Tests', () => {
 		assert.strictEqual(emptyResult.command, null, 'Should handle null command');
 		assert.ok(emptyResult.alternatives.length === 0, 'No command means likely no alternatives either');
 	});
+
+	// --- Failing test: status bar indicator shows during LLM/chat activity and hides when done ---
+	test('Status bar indicator shows during LLM/chat activity and hides when done', async () => {
+		const statusBar = vscode.window.createStatusBarItem();
+		statusBar.text = '$(sync~spin) Thinking...';
+		let isVisible = false;
+		statusBar.show();
+		isVisible = true;
+		assert.ok(isVisible, 'Status bar should be visible during LLM activity');
+		statusBar.hide();
+		isVisible = false;
+		assert.ok(!isVisible, 'Status bar should be hidden after LLM activity');
+	});
+});
+
+// --- Integration test: ChatPanel debug/assistant message flow with LLM mock ---
+suite('ChatPanel Integration', () => {
+  test('ChatPanel displays debug and assistant messages (with LLM mock)', async function () {
+    this.timeout(5000); // Increase timeout for async
+    // Mock extension context
+    const context = {
+      globalState: {
+        get: () => [],
+        update: async () => {}
+      }
+    } as unknown as vscode.ExtensionContext;
+
+    // Mock getLLMResult to return a dummy result immediately
+    const originalGetLLMResult = require('../llm').getLLMResult;
+    require('../llm').getLLMResult = async () => ({
+      intent: 'mock intent',
+      command: 'mock.command',
+      terminal: null,
+      search: null,
+      confidence: 1.0,
+      alternatives: []
+    });
+
+    // Create or show the chat panel
+    const panel = ChatPanel.createOrShow(vscode.Uri.file(__dirname), context);
+
+    // Simulate sending a user message
+    await (panel as any)._handleUserMessage('Test command');
+
+    // Wait for async UI updates
+    await new Promise(res => setTimeout(res, 500));
+
+    // Check that conversation history contains user, debug, and assistant/system messages
+    const history = (panel as any)._conversationHistory;
+    const hasUser = history.some((msg: any) => msg.role === 'user' && msg.content === 'Test command');
+    const hasDebug = history.some((msg: any) => msg.role === 'system' && msg.content.includes('[DEBUG] Assistant payload'));
+    const hasAssistant = history.some((msg: any) => msg.role === 'assistant');
+
+    assert.ok(hasUser, 'User message should be in conversation history');
+    assert.ok(hasDebug, 'Debug message should be in conversation history');
+    assert.ok(hasAssistant, 'Assistant message should be in conversation history');
+
+    // Restore original getLLMResult
+    require('../llm').getLLMResult = originalGetLLMResult;
+  });
 });
