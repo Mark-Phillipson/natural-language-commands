@@ -186,12 +186,38 @@ export class ChatPanel {
 
 	private async _executeCommand(command: string | null, terminal: string | null) {
 		try {
+			// Get the last command result to check confidence
+			const lastAssistantMsg = [...this._conversationHistory]
+				.reverse()
+				.find(msg => msg.role === 'assistant' && msg.commandResult);
+			
+			const confidence = lastAssistantMsg?.commandResult?.confidence || 0;
+			const CONFIDENCE_THRESHOLD = 0.9;
+
+			// Check confidence threshold
+			if (confidence < CONFIDENCE_THRESHOLD) {
+				const shouldExecute = await vscode.window.showWarningMessage(
+					`I'm ${Math.round(confidence * 100)}% confident about this command.\n\nDo you want to proceed?`,
+					{ modal: true },
+					'Execute Anyway',
+					'Cancel'
+				);
+
+				if (shouldExecute !== 'Execute Anyway') {
+					this._sendMessageToWebview('addMessage', {
+						role: 'system',
+						content: '❌ Command execution cancelled due to low confidence.'
+					});
+					return;
+				}
+			}
+
 			if (command && command.trim().length > 0) {
 				const trimmed = command.trim();
 				await vscode.commands.executeCommand(trimmed);
 				this._sendMessageToWebview('addMessage', {
 					role: 'system',
-					content: `✅ Successfully executed command: \`${trimmed}\``
+					content: `✅ Successfully executed command (${Math.round(confidence * 100)}% confidence): \`${trimmed}\``
 				});
 			} else if (terminal && terminal.trim().length > 0) {
 				let terminalInstance = vscode.window.activeTerminal;
@@ -202,7 +228,7 @@ export class ChatPanel {
 				terminalInstance.sendText(terminal.trim(), true);
 				this._sendMessageToWebview('addMessage', {
 					role: 'system',
-					content: `✅ Running in terminal: \`${terminal}\``
+					content: `✅ Running in terminal (${Math.round(confidence * 100)}% confidence): \`${terminal}\``
 				});
 			}
 		} catch (error: any) {
