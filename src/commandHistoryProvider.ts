@@ -89,9 +89,10 @@ export class CommandHistoryProvider implements vscode.TreeDataProvider<CommandHi
 
 export class CommandHistoryTreeItem extends vscode.TreeItem {
     constructor(public readonly item: CommandHistoryItem) {
-        super(item.label, vscode.TreeItemCollapsibleState.None);
+        // Use description for time, but show full command in label (multiline if needed)
+        super(item.label.length > 60 ? item.label.replace(/(.{60})/g, '$1\n') : item.label, vscode.TreeItemCollapsibleState.None);
         this.description = `${item.time.toLocaleTimeString()}${item.parameters ? ' | ' + item.parameters : ''}`;
-        this.tooltip = `Re-run: ${item.label}\n${item.time.toLocaleString()}${item.parameters ? '\nParams: ' + item.parameters : ''}`;
+        this.tooltip = `Command:\n${item.label}\n\nTime: ${item.time.toLocaleString()}${item.parameters ? '\nParams: ' + item.parameters : ''}`;
         this.contextValue = 'commandHistoryItem';
         // Accessibility: always show as actionable
         this.command = {

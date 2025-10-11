@@ -1,3 +1,10 @@
-Can we change the second line where we have my name and remove the-and improve the case as it should be proper case for a name.
+ can we devise some tests for the following scenarios:
 
-Also the next line should begin with a capital letter and have a period at the end of the sentence.
+ - User inputs a command that should be executed in the terminal.
+ - User inputs a command that should be executed as a VS Code command.
+ - User inputs a command that should open a file.
+ - User inputs an ambiguous command that needs more clarification.
+ - User inputs a command that triggers the help menu.
+ - User asks to be transferred to copilot chat.
+ - User inputs a command that opens the file menu.
+ - User Asks a Question that is definitely not a command.

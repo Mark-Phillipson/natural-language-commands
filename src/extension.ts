@@ -14,6 +14,11 @@
 	const HISTORY_LIMIT = 20;
 
 export function activate(context: vscode.ExtensionContext) {
+	// Status bar item for LLM activity
+	const thinkingStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+	thinkingStatusBar.text = '$(sync~spin) Thinking...';
+	thinkingStatusBar.tooltip = 'Waiting for LLM API response';
+	context.subscriptions.push(thinkingStatusBar);
 	// Helper: Detect project type in the workspace or current folder
 	async function detectProjectType(): Promise<'dotnet' | 'node' | 'unknown'> {
 		const folders = vscode.workspace.workspaceFolders;
@@ -464,17 +469,7 @@ export function activate(context: vscode.ExtensionContext) {
 			return text.replace(/^\s*please\s*[,:]?\s*/i, '');
 		}
 		const trimmedInput = stripPleasePrefix(userInput.trim());
-		// Only add to history if not already the most recent entry
-		if (history.length === 0 || history[0] !== trimmedInput) {
-			history = [trimmedInput, ...history.filter(cmd => cmd !== trimmedInput)].slice(0, HISTORY_LIMIT);
-			await context.globalState.update(HISTORY_KEY, history);
-			// Add to session sidebar history
-			commandHistoryProvider.addCommand({
-				label: trimmedInput,
-				time: new Date(),
-				parameters: '' // You can enhance this to capture parameters if needed
-			});
-		}
+		// Do NOT add to history yet; only add after successful execution or clarification
 
 		try {
 			const apiKey = process.env.OPENAI_API_KEY;
@@ -482,6 +477,8 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.window.showErrorMessage('OpenAI API key not found. Please set OPENAI_API_KEY in your .env file.');
 				return;
 			}
+			// Show status bar while waiting for LLM
+			thinkingStatusBar.show();
 			// Read model and debug settings from VS Code configuration
 			const config = vscode.workspace.getConfiguration();
 			const model = config.get<string>('naturalLanguageCommands.model', 'gpt-4o');
@@ -525,6 +522,7 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 			const duration = Date.now() - start;
+			thinkingStatusBar.hide();
 			vscode.window.showInformationMessage(`LLM response time: ${duration} ms`);
 			// Diagnostic logging for LLM result and intent/command
 			vscode.window.showInformationMessage(`[NLC DEBUG] LLM result: ${JSON.stringify(parsed)}`);
@@ -540,65 +538,104 @@ export function activate(context: vscode.ExtensionContext) {
 			const confidence = parsed.confidence;
 			const altCommands = parsed.alternatives;
 
-			// If parsed.command is present, execute it directly
-			if (parsed.command && typeof parsed.command === 'string' && parsed.command.trim().length > 0) {
+			// Only execute command if confidence > 0.9
+			if (parsed.command && typeof parsed.command === 'string' && parsed.command.trim().length > 0 && confidence > 0.9) {
 				const trimmed = parsed.command.trim();
 				// Custom mapping for VoiceLauncher table listing intent
 				if (/list (all )?tables( available)? in (my )?(voice ?launcher|voicelauncher)/i.test(trimmed) ||
 					/show (me )?(all )?tables( in)? (my )?(voice ?launcher|voicelauncher)/i.test(trimmed)) {
 					vscode.window.showInformationMessage('Triggering VoiceLauncher table listing workflow...');
 					await vscode.commands.executeCommand('natural-language-commands.listTablesVoiceLauncher');
+					// Add to history after successful execution
+					let history: string[] = (context.globalState.get<string[]>(HISTORY_KEY) || [])
+						.filter(cmd => typeof cmd === 'string')
+						.map(cmd => cmd.trim());
+					if (history.length === 0 || history[0] !== trimmed) {
+						history = [trimmed, ...history.filter(cmd => cmd !== trimmed)].slice(0, HISTORY_LIMIT);
+						await context.globalState.update(HISTORY_KEY, history);
+						commandHistoryProvider.addCommand({
+							label: trimmed,
+							time: new Date(),
+							parameters: ''
+						});
+					}
 					return;
 				}
 				vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
 				const result = await vscode.commands.executeCommand(trimmed);
 				if (result !== undefined) {
 					vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+					// Add to history after successful execution
+					let history: string[] = (context.globalState.get<string[]>(HISTORY_KEY) || [])
+						.filter(cmd => typeof cmd === 'string')
+						.map(cmd => cmd.trim());
+					if (history.length === 0 || history[0] !== trimmed) {
+						history = [trimmed, ...history.filter(cmd => cmd !== trimmed)].slice(0, HISTORY_LIMIT);
+						await context.globalState.update(HISTORY_KEY, history);
+						commandHistoryProvider.addCommand({
+							label: trimmed,
+							time: new Date(),
+							parameters: ''
+						});
+					}
 				} else {
 					vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
 				}
 				return;
 			}
 
-			// If parsed.terminal is present, run it in the integrated terminal
-			if (parsed.terminal && typeof parsed.terminal === 'string' && parsed.terminal.trim().length > 0) {
-				let terminalCommand = parsed.terminal.trim();
-				// If the user wants to cancel/stop/interrupt a running process, try to send Ctrl+C
-				if (/^(ctrl\+c|cancel|stop|interrupt|terminate|kill|shut ?down|abort|break)( running)?( command| process| task| job| terminal)?/i.test(terminalCommand)) {
-					await trySendCtrlC();
-					return;
-				}
-				// Detect build-and-run intent in user input or LLM output
-				const buildRunIntent = /((build|compile)( and)? run|run( and)? build|build then run|build & run|run & build|run application|run the app|build the app|build application|start application|start the app)/i;
-				if (buildRunIntent.test(userInput) || buildRunIntent.test(terminalCommand)) {
-					const projectType = await detectProjectType();
-					if (projectType === 'dotnet') {
-						terminalCommand = 'dotnet build && dotnet run';
-					} else if (projectType === 'node') {
-						terminalCommand = 'npm run build && npm start';
-					}
-				} else if (/^(build|run|test)( the)?( app| application)?$/i.test(terminalCommand)) {
-					// If the command is generic (e.g., 'build the application'), try to pick the right build command
-					const projectType = await detectProjectType();
-					if (projectType === 'dotnet') {
-						terminalCommand = 'dotnet build';
-					} else if (projectType === 'node') {
-						terminalCommand = 'npm run build';
-					}
-				}
-				// Translate if running in PowerShell
-				if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
-					terminalCommand = translateToPowerShell(terminalCommand);
-				}
-				let terminal = vscode.window.activeTerminal;
-				if (!terminal) {
-					terminal = vscode.window.createTerminal('NLC Terminal');
-				}
-				terminal.show();
-				terminal.sendText(terminalCommand, true);
-				vscode.window.showInformationMessage(`Running in terminal: ${terminalCommand}`);
-				return;
-			}
+			// Only run terminal command if confidence > 0.9
+						if (parsed.terminal && typeof parsed.terminal === 'string' && parsed.terminal.trim().length > 0 && confidence > 0.9) {
+							let terminalCommand = parsed.terminal.trim();
+							// If the user wants to cancel/stop/interrupt a running process, try to send Ctrl+C
+							if (/^(ctrl\+c|cancel|stop|interrupt|terminate|kill|shut ?down|abort|break)( running)?( command| process| task| job| terminal)?/i.test(terminalCommand)) {
+								await trySendCtrlC();
+								return;
+							}
+							// Detect build-and-run intent in user input or LLM output
+							const buildRunIntent = /((build|compile)( and)? run|run( and)? build|build then run|build & run|run & build|run application|run the app|build the app|build application|start application|start the app)/i;
+							if (buildRunIntent.test(userInput) || buildRunIntent.test(terminalCommand)) {
+								const projectType = await detectProjectType();
+								if (projectType === 'dotnet') {
+									terminalCommand = 'dotnet build; dotnet run';
+								} else if (projectType === 'node') {
+									terminalCommand = 'npm run build; npm start';
+								}
+							} else if (/^(build|run|test)( the)?( app| application)?$/i.test(terminalCommand)) {
+								// If the command is generic (e.g., 'build the application'), try to pick the right build command
+								const projectType = await detectProjectType();
+								if (projectType === 'dotnet') {
+									terminalCommand = 'dotnet build';
+								} else if (projectType === 'node') {
+									terminalCommand = 'npm run build';
+								}
+							}
+							// Always translate to PowerShell if running in pwsh
+							if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
+								terminalCommand = translateToPowerShell(terminalCommand);
+							}
+							let terminal = vscode.window.activeTerminal;
+							if (!terminal) {
+								terminal = vscode.window.createTerminal('NLC Terminal');
+							}
+							terminal.show();
+							terminal.sendText(terminalCommand, true);
+							vscode.window.showInformationMessage(`Running in terminal: ${terminalCommand}`);
+							// Add to history after successful execution
+							let history: string[] = (context.globalState.get<string[]>(HISTORY_KEY) || [])
+								.filter(cmd => typeof cmd === 'string')
+								.map(cmd => cmd.trim());
+							if (history.length === 0 || history[0] !== terminalCommand) {
+								history = [terminalCommand, ...history.filter(cmd => cmd !== terminalCommand)].slice(0, HISTORY_LIMIT);
+								await context.globalState.update(HISTORY_KEY, history);
+								commandHistoryProvider.addCommand({
+									label: terminalCommand,
+									time: new Date(),
+									parameters: ''
+								});
+							}
+							return;
+						}
 
 			// Check alternatives for VoiceLauncher SQL workflow intent and terminal commands
 			if (altCommands && altCommands.length > 0) {
@@ -633,49 +670,108 @@ export function activate(context: vscode.ExtensionContext) {
 			// Otherwise, show alternatives if present
 						if (altCommands && altCommands.length > 0) {
 							type AltCommand = { command?: string; terminal?: string; description?: string };
-							type NumberedPick = { label: string; alt: AltCommand; idx: number };
-							const numbered: NumberedPick[] = altCommands.map((alt: any, idx: number) => {
+							// Build numbered QuickPick and keep a mapping to alternatives
+							const altMap: AltCommand[] = [];
+							const numbered: vscode.QuickPickItem[] = altCommands.map((alt: any, idx: number) => {
 								// Normalize nulls to undefined for type compatibility
 								const normalized: AltCommand = {
 									command: alt.command ?? undefined,
 									terminal: alt.terminal ?? undefined,
 									description: alt.description
 								};
-								let label = `${idx + 1}. `;
-								if (normalized.command) { label += `Command: ${normalized.command}`; }
-								if (normalized.terminal) { label += ` Terminal: ${normalized.terminal}`; }
-								if (normalized.description) { label += ` — ${normalized.description}`; }
-								return { label, alt: normalized, idx };
+								altMap.push(normalized);
+								let label = `${idx + 1}.`;
+								let desc = '';
+								let detail = '';
+								if (normalized.command) { desc += `Command: ${normalized.command}\n`; }
+								if (normalized.terminal) { desc += `Terminal: ${normalized.terminal}\n`; }
+								if (normalized.description) { detail = normalized.description; }
+								return {
+									label,
+									description: desc.trim(),
+									detail: detail.trim(),
+									alwaysShow: true
+								};
+							});
+							// Add the 'Refine or elaborate my command...' option
+							numbered.push({
+								label: 'Refine or elaborate my command...',
+								description: 'Provide more details, clarify, or correct the command',
+								detail: 'If none of the above are quite right, you can refine or explain your intent.',
+								alwaysShow: true
 							});
 							const pick = await vscode.window.showQuickPick(numbered, {
 								placeHolder: 'Select a command to run (type the number and press Enter)',
 								ignoreFocusOut: true,
 							});
-							if (pick) {
-								const selected = pick.alt;
-								if (selected.command && selected.command.trim().length > 0) {
-									const trimmed = selected.command.trim();
-									vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
-									const result = await vscode.commands.executeCommand(trimmed);
-									if (result !== undefined) {
-										vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+							if (pick && pick.label) {
+								if (pick.label === 'Refine or elaborate my command...') {
+									const clarification = await vscode.window.showInputBox({
+										prompt: 'Please clarify, rephrase, or provide more details for your command:',
+										placeHolder: 'Describe what you want to do, or explain what went wrong...'
+									});
+									if (clarification && clarification.trim().length > 0) {
+										// Store feedback/clarification for learning
+										if (context && context.globalState) {
+											let feedback: any[] = context.globalState.get('nlc_feedback') || [];
+											feedback.unshift({
+												original: userInput,
+												clarification,
+												time: new Date().toISOString()
+											});
+											feedback = feedback.slice(0, 100); // Limit feedback history
+											await context.globalState.update('nlc_feedback', feedback);
+										}
+										vscode.window.showInformationMessage('Thank you for your feedback!');
+										// Only add clarified command to history
+										if (clarification.trim().length > 0) {
+											let history: string[] = (context.globalState.get<string[]>(HISTORY_KEY) || [])
+												.filter(cmd => typeof cmd === 'string')
+												.map(cmd => cmd.trim());
+											const trimmedClarification = clarification.trim();
+											if (history.length === 0 || history[0] !== trimmedClarification) {
+												history = [trimmedClarification, ...history.filter(cmd => cmd !== trimmedClarification)].slice(0, HISTORY_LIMIT);
+												await context.globalState.update(HISTORY_KEY, history);
+												commandHistoryProvider.addCommand({
+													label: trimmedClarification,
+													time: new Date(),
+													parameters: ''
+												});
+											}
+										}
 									} else {
-										vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+										vscode.window.showInformationMessage('No clarification or feedback provided.');
 									}
 									return;
-								} else if (selected.terminal && selected.terminal.trim().length > 0) {
-									let trimmed = selected.terminal.trim();
-									if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
-										trimmed = translateToPowerShell(trimmed);
+								}
+								// Extract index from label (e.g., '1.' -> 0)
+								const idx = parseInt(pick.label) - 1;
+								if (idx >= 0 && idx < altMap.length) {
+									const selected = altMap[idx];
+									if (selected.command && selected.command.trim().length > 0) {
+										const trimmed = selected.command.trim();
+										vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
+										const result = await vscode.commands.executeCommand(trimmed);
+										if (result !== undefined) {
+											vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+										} else {
+											vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+										}
+										return;
+									} else if (selected.terminal && selected.terminal.trim().length > 0) {
+										let trimmed = selected.terminal.trim();
+										if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
+											trimmed = translateToPowerShell(trimmed);
+										}
+										let terminal = vscode.window.activeTerminal;
+										if (!terminal) {
+											terminal = vscode.window.createTerminal('NLC Terminal');
+										}
+										terminal.show();
+										terminal.sendText(trimmed, true);
+										vscode.window.showInformationMessage(`Running in terminal: ${trimmed}`);
+										return;
 									}
-									let terminal = vscode.window.activeTerminal;
-									if (!terminal) {
-										terminal = vscode.window.createTerminal('NLC Terminal');
-									}
-									terminal.show();
-									terminal.sendText(trimmed, true);
-									vscode.window.showInformationMessage(`Running in terminal: ${trimmed}`);
-									return;
 								}
 							}
 						}
@@ -706,8 +802,34 @@ export function activate(context: vscode.ExtensionContext) {
 			} else {
 				vscode.window.showInformationMessage('[NLC FALLBACK] Sidebar fallback not triggered. No mapping found.');
 			}
+
+			// NEW: If no command, no alternatives, and low confidence, prompt for clarification/feedback
+			if (
+				(!parsed.command || parsed.command.trim().length === 0) &&
+				(!altCommands || altCommands.length === 0) &&
+				(typeof confidence === 'number' && confidence < 0.5)
+			) {
+				vscode.window.showWarningMessage('[NLC] Ambiguous command detected: opening chat interface for clarification or feedback.');
+				thinkingStatusBar.show();
+				const chatPanel = ChatPanel.createOrShow(context.extensionUri, context);
+				// Pass the ambiguous command as the first message
+				if (chatPanel && typeof userInput === 'string' && userInput.trim().length > 0) {
+					setTimeout(() => {
+						chatPanel['_handleUserMessage'](userInput);
+					}, 100);
+				}
+				// Hide status bar when chat panel is closed
+				if (chatPanel && chatPanel['_panel']) {
+					chatPanel['_panel'].onDidDispose(() => {
+						thinkingStatusBar.hide();
+					});
+				}
+				// Do NOT add to history until clarified in chat
+				return;
+			}
 		}
 		catch (err: any) {
+			thinkingStatusBar.hide();
 			vscode.window.showErrorMessage(`OpenAI API error: ${err.message || err}`);
 		}
 	});
