@@ -161,6 +161,14 @@ The feedback data is designed to enable future enhancements such as:
 - Check the command palette for "NLC: Open Chat Interface"
 - Look for errors in the Developer Console (`Help > Toggle Developer Tools`)
 
+### Cannot Send Messages
+- **If clicking the Send button doesn't work**: Try pressing Enter in the input field instead
+- **If pressing Enter doesn't work**: Ensure the input field is focused (click on it first)
+- **If both fail**: 
+  - Check the Developer Console (`Help > Toggle Developer Tools`) for JavaScript errors
+  - Try closing and reopening the chat interface
+  - Restart VS Code if the problem persists
+
 ### Commands Not Executing
 - Verify you have the necessary permissions
 - Check that VS Code commands are valid

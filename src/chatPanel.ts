@@ -90,6 +90,8 @@ export class ChatPanel {
 	}
 
 	private async _handleUserMessage(text: string) {
+		console.log('[ChatPanel] Handling user message:', text);
+		
 		// Add user message to conversation
 		this._conversationHistory.push({
 			role: 'user',
@@ -280,6 +282,7 @@ export class ChatPanel {
 	}
 
 	private _sendMessageToWebview(type: string, payload: any) {
+		console.log('[ChatPanel] Sending message to webview:', { type, payload });
 		this._panel.webview.postMessage({ type, payload });
 	}
 
@@ -464,6 +467,8 @@ export class ChatPanel {
 			let currentThinking = null;
 
 			function addMessage(role, content, commandResult, showActions) {
+				console.log('addMessage called:', { role, content, commandResult, showActions });
+				
 				// Remove welcome message if it exists
 				const welcome = chatContainer.querySelector('.welcome-message');
 				if (welcome) {
@@ -477,9 +482,10 @@ export class ChatPanel {
 				const formattedContent = content
 					.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 					.replace(/\`([^\`]+)\`/g, '<code>$1</code>')
-					.replace(/\\n/g, '<br>');
+					.replace(/\n/g, '<br>');
 				
 				messageDiv.innerHTML = formattedContent;
+				console.log('Message div created:', messageDiv);
 
 				if (showActions && commandResult) {
 					const actionsDiv = document.createElement('div');
@@ -552,7 +558,9 @@ export class ChatPanel {
 				}
 
 				chatContainer.appendChild(messageDiv);
+				console.log('Message appended to chat container');
 				chatContainer.scrollTop = chatContainer.scrollHeight;
+				console.log('Scrolled to bottom');
 			}
 
 			function setThinking(thinking) {
@@ -574,26 +582,33 @@ export class ChatPanel {
 
 			function sendMessage() {
 				const text = userInput.value.trim();
+				console.log('sendMessage called with text:', text);
 				if (!text) return;
 
+				console.log('Posting message to extension:', { type: 'userMessage', text });
 				vscode.postMessage({
 					type: 'userMessage',
 					text: text
 				});
 
 				userInput.value = '';
-				sendButton.disabled = true;
+				console.log('Input cleared, message sent');
+				// Note: Don't disable the send button here, as that would prevent
+				// users from sending multiple messages if the first one fails.
 			}
 
 			sendButton.addEventListener('click', sendMessage);
-			userInput.addEventListener('keypress', (e) => {
+			// Use keydown instead of deprecated keypress event for better reliability
+			userInput.addEventListener('keydown', (e) => {
 				if (e.key === 'Enter') {
+					e.preventDefault(); // Prevent default to avoid new line in input
 					sendMessage();
 				}
 			});
 
 			// Handle messages from the extension
 			window.addEventListener('message', event => {
+				console.log('Webview received message:', event.data);
 				const message = event.data;
 				switch (message.type) {
 					case 'addMessage':
@@ -603,7 +618,6 @@ export class ChatPanel {
 							message.payload.commandResult,
 							message.payload.showActions
 						);
-						sendButton.disabled = false;
 						break;
 					case 'setThinking':
 						setThinking(message.payload.thinking);
