@@ -4,6 +4,13 @@ All notable changes to the "natural-language-commands" extension will be documen
 
 ## [Unreleased]
 
+### Fixed
+- **Chat interface message sending**: Fixed webview message sending issues where users couldn't send messages
+  - Changed deprecated `keypress` event to `keydown` for better reliability across browsers/webviews
+  - Added `preventDefault()` to Enter key handler to prevent unwanted line breaks
+  - Removed blocking `disabled` state on send button that prevented users from sending follow-up messages
+  - Improved error recovery by allowing multiple message attempts without UI freezing
+
 ### Added
 - Simulated menus for File, Edit, Selection, View, Go, Run, Terminal, and Help (QuickPick UI)
 - Sidebar/activity bar navigation with "Show all sidebars"

@@ -582,12 +582,15 @@ export class ChatPanel {
 				});
 
 				userInput.value = '';
+				// Note: Don't disable the send button here, as that would prevent
+				// users from sending multiple messages if the first one fails.
 			}
 
 			sendButton.addEventListener('click', sendMessage);
+			// Use keydown instead of deprecated keypress event for better reliability
 			userInput.addEventListener('keydown', (e) => {
 				if (e.key === 'Enter') {
-					e.preventDefault();
+					e.preventDefault(); // Prevent default to avoid new line in input
 					sendMessage();
 				}
 			});
