@@ -34,7 +34,6 @@ title: Action Plan - VS Code Natural Language Command Extension
 - Store feedback data securely and use it to improve intent mapping.
 - Optionally, allow opt-in for sharing anonymized feedback for global model improvement.
 
-## 7. Accessibility & Voice Input
 ## 7. Accessibility & Voice Workflow
 - Ensure all UI elements are accessible (screen reader support, keyboard navigation).
 - Test with accessibility tools and users.
@@ -81,4 +80,4 @@ title: Action Plan - VS Code Natural Language Command Extension
 - [ ] Write tests and perform QA
 - [ ] Document features and usage
 - [ ] Prepare for release and future enhancements
-```
+```,
