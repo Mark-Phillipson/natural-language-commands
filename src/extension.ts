@@ -7,6 +7,7 @@
 	import { mapSidebarCommand } from './sidebarMap';
 	import { NotificationManager } from './notificationManager';
 	import { CommandHistoryProvider, CommandHistoryItem } from './commandHistoryProvider';
+	import { ChatPanel } from './chatPanel';
 
 	// Helper for command history
 	const HISTORY_KEY = 'nlc.commandHistory';
@@ -856,6 +857,12 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(newDisposable);
+
+	// Register chat command
+	const chatDisposable = vscode.commands.registerCommand('natural-language-commands.chat', () => {
+		ChatPanel.createOrShow(context.extensionUri, context);
+	});
+	context.subscriptions.push(chatDisposable);
 }
 
 

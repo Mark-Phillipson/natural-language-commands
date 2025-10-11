@@ -30,9 +30,9 @@ title: Action Plan - VS Code Natural Language Command Extension
 - Store custom mappings in extension settings or a local file.
 
 ## 6. Learning & Feedback Mechanism
-- Implement a feedback UI for users to rate or correct command suggestions.
-- Store feedback data securely and use it to improve intent mapping.
-- Optionally, allow opt-in for sharing anonymized feedback for global model improvement.
+- ✅ Implement a feedback UI for users to rate or correct command suggestions.
+- ✅ Store feedback data securely and use it to improve intent mapping.
+- ✅ Optionally, allow opt-in for sharing anonymized feedback for global model improvement.
 
 ## 7. Accessibility & Voice Input
 ## 7. Accessibility & Voice Workflow

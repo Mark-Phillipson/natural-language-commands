@@ -15,6 +15,7 @@ This extension lets you run VS Code commands using natural language. It integrat
 
 ## Features
 - Run VS Code or terminal commands using plain English
+- **Chat-like interface for command refinement and feedback**
 - Simulated menus for File, Edit, Selection, View, Go, Run, Terminal, and Help (via QuickPick)
 - Sidebar and activity bar navigation (including custom sidebars)
 - Command history and example commands sidebar
@@ -23,6 +24,7 @@ This extension lets you run VS Code commands using natural language. It integrat
 - Status bar alert icon for notifications
 - PowerShell translation for terminal commands
 - Confirmation and alternatives for low-confidence actions
+- **Learning mechanism that stores feedback to improve suggestions**
 
 ## Usage
 
@@ -53,12 +55,23 @@ Say "show all sidebars" to get a filterable list of all sidebars (Explorer, Sour
 ### Command History
 The extension keeps a session-based and persistent command history, accessible via the custom sidebar. You can also view example commands in a dedicated sidebar view.
 
+### Chat Interface
+Use the "Open Chat Interface" command to launch a conversational UI where you can:
+- Type natural language commands and see suggestions
+- Execute commands directly from the chat
+- Provide feedback on whether suggestions were correct
+- Refine commands when they don't match your expectations
+- Have a multi-turn conversation to get the right command
+
+The chat interface stores feedback data to help improve future suggestions, making the extension smarter over time.
+
 ## Extension Commands
 
 | Command ID                                      | Title / Description                       |
 |-------------------------------------------------|-------------------------------------------|
 | natural-language-commands.run                   | Run Command... (main entry, with history) |
 | natural-language-commands.new                   | New Command (direct input)                |
+| natural-language-commands.chat                  | Open Chat Interface (feedback & refinement)|
 | natural-language-commands.debugMenu             | Debugging Commands (simulated menu)       |
 | natural-language-commands.listTablesVoiceLauncher| List all tables in VoiceLauncher DB       |
 | natural-language-commands.examples              | Show example natural language commands    |
@@ -79,6 +92,8 @@ The extension keeps a session-based and persistent command history, accessible v
 ## Extension Settings
 - `naturalLanguageCommands.model`: OpenAI model to use (default: gpt-4o)
 - `naturalLanguageCommands.debugShowRawResponse`: Show raw LLM response (default: false)
+- `naturalLanguageCommands.enableChatMode`: Enable chat-like interface for command refinement (default: true)
+- `naturalLanguageCommands.enableFeedbackStorage`: Store feedback data to improve suggestions (default: true)
 
 ## Limitations
 - Native top menus cannot be opened (simulated via QuickPick only)

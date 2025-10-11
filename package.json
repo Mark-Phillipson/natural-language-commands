@@ -21,7 +21,8 @@
   ],
   "activationEvents": [
     "onCommand:natural-language-commands.run",
-    "onCommand:natural-language-commands.new"
+    "onCommand:natural-language-commands.new",
+    "onCommand:natural-language-commands.chat"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -57,6 +58,11 @@
       {
         "command": "natural-language-commands.new",
         "title": "New Command",
+        "category": "NLC"
+      },
+      {
+        "command": "natural-language-commands.chat",
+        "title": "Open Chat Interface",
         "category": "NLC"
       },
       {
@@ -121,6 +127,16 @@
           "type": "boolean",
           "default": false,
           "description": "Show the raw LLM response in the UI (for debugging only)."
+        },
+        "naturalLanguageCommands.enableChatMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable chat-like interface for command refinement and feedback."
+        },
+        "naturalLanguageCommands.enableFeedbackStorage": {
+          "type": "boolean",
+          "default": true,
+          "description": "Store feedback data to help improve command suggestions over time."
         }
       }
     }
