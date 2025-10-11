@@ -5,11 +5,21 @@ All notable changes to the "natural-language-commands" extension will be documen
 ## [Unreleased]
 
 ### Fixed
+- **Chat interface message rendering** (CRITICAL): Fixed bug where messages were not visible in the webview
+  - Changed newline replacement regex from `/\\n/g` to `/\n/g` to properly convert actual newlines to HTML `<br>` tags
+  - Messages now display with proper formatting including bold text, code blocks, and line breaks
+  - Without this fix, all message content appeared as a single line or didn't appear at all
 - **Chat interface message sending**: Fixed webview message sending issues where users couldn't send messages
   - Changed deprecated `keypress` event to `keydown` for better reliability across browsers/webviews
   - Added `preventDefault()` to Enter key handler to prevent unwanted line breaks
   - Removed blocking `disabled` state on send button that prevented users from sending follow-up messages
   - Improved error recovery by allowing multiple message attempts without UI freezing
+
+### Added
+- **Debug logging**: Comprehensive console logging throughout chat message flow
+  - Extension side: Logs message handling and sending to webview
+  - Webview side: Logs message receiving, rendering, and DOM manipulation
+  - Makes it easy to diagnose any issues by following the complete message lifecycle
 
 ### Added
 - Simulated menus for File, Edit, Selection, View, Go, Run, Terminal, and Help (QuickPick UI)
