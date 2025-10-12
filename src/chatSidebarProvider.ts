@@ -51,62 +51,76 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
     <button id="send-button" accesskey="d" style="padding:10px 24px;background:#0e639c;color:white;border:none;cursor:pointer;font-size:14px;font-weight:bold;">Send <span style="font-size:12px;color:#fff;background:#0057b7;border-radius:3px;padding:2px 6px;margin-left:4px;">Alt+D</span></button>
     </div>
     <script nonce="${nonce}">
-    alert('Sidebar script loaded!\nLine 2: Chat webview is active.\nLine 3: Use Alt+C to focus input.\nLine 4: Use Alt+D to send.');
-    document.getElementById('debug-log').textContent = 'Sidebar script running at ' + new Date().toLocaleTimeString();
-    (function() {
-        const vscode = acquireVsCodeApi();
-        const chatContainer = document.getElementById('chat-container');
-        const userInput = document.getElementById('user-input');
-        const sendButton = document.getElementById('send-button');
-        function addMessage(role, content) {
-            const msgDiv = document.createElement('div');
-            msgDiv.style.cssText = 'margin-bottom:16px;padding:12px;border-left:4px solid;font-size:15px;line-height:1.5;white-space:pre-line;word-break:break-word;background:#232323;border-radius:6px;box-shadow:0 1px 4px #0002;';
-            let label = '', color = '';
-            if (role === 'user') { label = '👤 USER'; color = '#0057b7'; }
-            else if (role === 'assistant') { label = '🤖 ASSISTANT'; color = '#228B22'; }
-            else { label = '⚙️ SYSTEM'; color = '#ff9800'; }
-            msgDiv.style.borderLeftColor = color;
-            msgDiv.innerHTML = '<div style="font-weight:bold;margin-bottom:6px;color:' + color + '">' + label + '</div><div style="white-space:pre-line;">' + content + '</div>';
-            chatContainer.appendChild(msgDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-        function sendMessage() {
-            const text = userInput.value.trim();
-            if (!text) return;
-            vscode.postMessage({ type: 'userMessage', text });
-            userInput.value = '';
-            sendButton.disabled = true;
-        }
-        sendButton.onclick = sendMessage;
-        userInput.onkeypress = function(e) { if (e.key === 'Enter') sendMessage(); };
-        window.addEventListener('message', event => {
-            const message = event.data;
-            if (message.type === 'addMessage') {
-                addMessage(message.payload.role, message.payload.content);
-                sendButton.disabled = false;
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            document.getElementById('debug-log').textContent = 'Sidebar script running at ' + new Date().toLocaleTimeString();
+            const vscode = acquireVsCodeApi();
+            const chatContainer = document.getElementById('chat-container');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            if (!chatContainer || !userInput || !sendButton) {
+                console.error('Sidebar chat: One or more DOM elements not found:', { chatContainer, userInput, sendButton });
+                document.getElementById('debug-log').textContent += ' [ERROR: DOM elements missing]';
+                return;
             }
-        });
-        // Always focus input when the webview becomes visible
-        function focusInput() {
-            setTimeout(() => { userInput.focus(); }, 0);
-        }
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) focusInput();
-        });
-        // Also support focusing input with Alt+C and sending with Alt+S
-        document.addEventListener('keydown', (e) => {
-            if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-                if (e.code === 'KeyC') {
-                    userInput.focus();
-                    e.preventDefault();
-                } else if (e.code === 'KeyD') {
-                    sendButton.click();
+            function addMessage(role, content) {
+                const msgDiv = document.createElement('div');
+                msgDiv.style.cssText = 'margin-bottom:16px;padding:12px;border-left:4px solid;font-size:15px;line-height:1.5;white-space:pre-line;word-break:break-word;background:#232323;border-radius:6px;box-shadow:0 1px 4px #0002;';
+                let label = '', color = '';
+                if (role === 'user') { label = '👤 USER'; color = '#0057b7'; }
+                else if (role === 'assistant') { label = '🤖 ASSISTANT'; color = '#228B22'; }
+                else { label = '⚙️ SYSTEM'; color = '#ff9800'; }
+                msgDiv.style.borderLeftColor = color;
+                msgDiv.innerHTML = '<div style="font-weight:bold;margin-bottom:6px;color:' + color + '">' + label + '</div><div style="white-space:pre-line;">' + content + '</div>';
+                chatContainer.appendChild(msgDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            function sendMessage() {
+                const text = userInput.value.trim();
+                if (!text) return;
+                vscode.postMessage({ type: 'userMessage', text });
+                userInput.value = '';
+            }
+            sendButton.onclick = sendMessage;
+            userInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
                     e.preventDefault();
                 }
+            });
+            // Expose a global function for programmatic sending (e.g. from voice command)
+            window.sendChatMessage = sendMessage;
+            window.addEventListener('message', event => {
+                const message = event.data;
+                if (message.type === 'addMessage') {
+                    addMessage(message.payload.role, message.payload.content);
+                }
+            });
+            // Always focus input when the webview becomes visible
+            function focusInput() {
+                setTimeout(() => { userInput.focus(); }, 0);
             }
-        });
-        focusInput();
-    })();
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) focusInput();
+            });
+            // Also support focusing input with Alt+C and sending with Alt+D
+            document.addEventListener('keydown', (e) => {
+                if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                    if (e.code === 'KeyC') {
+                        userInput.focus();
+                        e.preventDefault();
+                    } else if (e.code === 'KeyD') {
+                        sendButton.click();
+                        e.preventDefault();
+                    }
+                }
+            });
+            focusInput();
+        } catch (err) {
+            console.error('Sidebar chat script error:', err);
+            document.getElementById('debug-log').textContent += ' [ERROR: ' + err + ']';
+        }
+    });
     </script>
 </body>
 </html>`;
