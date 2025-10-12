@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { detectProjectType, getTestCommandForProject, getBuildCommandForProject } from './projectTypeUtils';
 
 export class ChatSidebarProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'nlcChatView';
@@ -210,6 +211,23 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                 const confidence = llmResult.confidence || 0;
                 const hasCommand = !!llmResult.command;
                 const hasTerminal = !!llmResult.terminal;
+                // Unify: If user asks to run tests, override with project type detection
+                const testIntent = /(open( the)? terminal( and)? run( my)? tests?)|(run( my)? tests?)|(test( the)?( app| application)?)/i;
+                if (testIntent.test(text) || (hasTerminal && testIntent.test(llmResult.terminal || ''))) {
+                    // Open terminal and run correct test command
+                    await vscode.commands.executeCommand('workbench.action.terminal.toggleTerminal');
+                    await new Promise(res => setTimeout(res, 300));
+                    const { command: testCmd, language } = await getTestCommandForProject();
+                    let terminal = vscode.window.activeTerminal;
+                    if (!terminal) {
+                        terminal = vscode.window.createTerminal('NLC Terminal');
+                    }
+                    terminal.show();
+                    terminal.sendText(testCmd, true);
+                    reply += `\n✅ Detected project type: ${language}\nOpened terminal and ran: ${testCmd}`;
+                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
+                    return;
+                }
                 if ((hasCommand || hasTerminal) && confidence >= 0.9) {
                     if (hasCommand) {
                         vscode.commands.executeCommand(llmResult.command!);
@@ -287,21 +305,17 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                     }
                     // LLM integration: call getLLMResult and display response
                     try {
-                        // Dynamically import getLLMResult to avoid circular deps
                         const { getLLMResult } = await import('./llm.js');
-                        // Get API key from env (same as extension.ts)
                         const apiKey = process.env.OPENAI_API_KEY;
                         if (!apiKey) {
                             this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ OpenAI API key not found. Please set OPENAI_API_KEY in your .env file.' });
                             return;
                         }
-                        // Use default model (gpt-4o)
                         const model = 'gpt-4o';
                         const llmResult = await getLLMResult(apiKey, message.text, model);
                         if (llmResult.error) {
                             this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ LLM error: ' + llmResult.error });
                         } else {
-                            // Show the LLM's intent/clarification as the assistant message
                             let reply = '';
                             if (llmResult.intent) {
                                 reply += `Intent: ${llmResult.intent}\n`;
@@ -324,18 +338,30 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                                     reply += `  - ${alt.command || alt.terminal || 'N/A'}: ${alt.description || ''}\n`;
                                 });
                             }
-                            // Decision logic: execute if confidence >= 90% and command/terminal present
+                            // Unify: If user asks to run tests, override with project type detection
+                            const testIntent = /(open( the)? terminal( and)? run( my)? tests?)|(run( my)? tests?)|(test( the)?( app| application)?)/i;
                             const confidence = llmResult.confidence || 0;
                             const hasCommand = !!llmResult.command;
                             const hasTerminal = !!llmResult.terminal;
+                            if (testIntent.test(message.text) || (hasTerminal && testIntent.test(llmResult.terminal || ''))) {
+                                await vscode.commands.executeCommand('workbench.action.terminal.toggleTerminal');
+                                await new Promise(res => setTimeout(res, 300));
+                                const { command: testCmd, language } = await getTestCommandForProject();
+                                let terminal = vscode.window.activeTerminal;
+                                if (!terminal) {
+                                    terminal = vscode.window.createTerminal('NLC Terminal');
+                                }
+                                terminal.show();
+                                terminal.sendText(testCmd, true);
+                                reply += `\n✅ Detected project type: ${language}\nOpened terminal and ran: ${testCmd}`;
+                                this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
+                                return;
+                            }
                             if ((hasCommand || hasTerminal) && confidence >= 0.9) {
-                                // Execute the command or terminal
                                 if (hasCommand) {
-                                    // VS Code command
                                     vscode.commands.executeCommand(llmResult.command!);
                                     reply += `\n✅ Executed VS Code command: ${llmResult.command}`;
                                 } else if (hasTerminal) {
-                                    // Terminal command
                                     let terminal = vscode.window.activeTerminal;
                                     if (!terminal) {
                                         terminal = vscode.window.createTerminal('NLC Terminal');
@@ -346,7 +372,6 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                                 }
                                 this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
                             } else {
-                                // Ask for clarification
                                 reply += '\n🤖 I need a bit more detail or clarification before I can run a command. Please rephrase or provide more information.';
                                 this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
                             }

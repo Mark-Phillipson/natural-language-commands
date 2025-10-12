@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
-	import * as path from 'path';
-	import * as dotenv from 'dotenv';
-	import { getLLMResult, LLMResult } from './llm';
-	import { mapSidebarCommand } from './sidebarMap';
-	import { NotificationManager } from './notificationManager';
-	import { CommandHistoryProvider, CommandHistoryItem } from './commandHistoryProvider';
-	// Removed ChatPanel import (sidebar chat is now the only chat UI)
-	import { ChatSidebarProvider } from './chatSidebarProvider';
+import * as path from 'path';
+import * as dotenv from 'dotenv';
+import { getLLMResult, LLMResult } from './llm';
+import { mapSidebarCommand } from './sidebarMap';
+import { NotificationManager } from './notificationManager';
+import { CommandHistoryProvider, CommandHistoryItem } from './commandHistoryProvider';
+// Removed ChatPanel import (sidebar chat is now the only chat UI)
+import { ChatSidebarProvider } from './chatSidebarProvider';
+import { detectProjectType, getTestCommandForProject, getBuildCommandForProject } from './projectTypeUtils';
 
 	// Helper for command history
 	const HISTORY_KEY = 'nlc.commandHistory';
@@ -28,25 +29,7 @@ export function activate(context: vscode.ExtensionContext) {
 			chatSidebarProvider
 		)
 	);
-	// Helper: Detect project type in the workspace or current folder
-	async function detectProjectType(): Promise<'dotnet' | 'node' | 'unknown'> {
-		const folders = vscode.workspace.workspaceFolders;
-		if (!folders || folders.length === 0) {
-			return 'unknown';
-		}
-		const folder = folders[0].uri.fsPath;
-		const fs = require('fs');
-		// Check for .csproj or .sln (dotnet)
-		const dotnetFiles = fs.readdirSync(folder).filter((f: string) => f.endsWith('.csproj') || f.endsWith('.sln'));
-		if (dotnetFiles.length > 0) {
-			return 'dotnet';
-		}
-		// Check for package.json (node)
-		if (fs.existsSync(require('path').join(folder, 'package.json'))) {
-			return 'node';
-		}
-		return 'unknown';
-	}
+// Project type detection and test/build command helpers are now in projectTypeUtils.ts
 	// Helper: Remove leading 'please' (case-insensitive, with optional comma/space) from user input for history
 	function stripPleasePrefix(text: string): string {
 		return text.replace(/^\s*please\s*[,:]?\s*/i, '');
@@ -627,24 +610,49 @@ export function activate(context: vscode.ExtensionContext) {
 					await trySendCtrlC();
 					return;
 				}
+
+				// Detect if the user wants to "run tests" or similar
+							const testIntent = /(run( my)? tests?|test( the)?( app| application)?)/i;
+							if (testIntent.test(userInput) || testIntent.test(terminalCommand)) {
+								const { command: testCmd } = await getTestCommandForProject();
+								terminalCommand = testCmd;
+							}
+
 				// Detect build-and-run intent in user input or LLM output
-				const buildRunIntent = /((build|compile)( and)? run|run( and)? build|build then run|build & run|run & build|run application|run the app|build the app|build application|start application|start the app)/i;
-				if (buildRunIntent.test(userInput) || buildRunIntent.test(terminalCommand)) {
-					const projectType = await detectProjectType();
-					if (projectType === 'dotnet') {
-						terminalCommand = 'dotnet build && dotnet run';
-					} else if (projectType === 'node') {
-						terminalCommand = 'npm run build && npm start';
-					}
-				} else if (/^(build|run|test)( the)?( app| application)?$/i.test(terminalCommand)) {
-					// If the command is generic (e.g., 'build the application'), try to pick the right build command
-					const projectType = await detectProjectType();
-					if (projectType === 'dotnet') {
-						terminalCommand = 'dotnet build';
-					} else if (projectType === 'node') {
-						terminalCommand = 'npm run build';
-					}
-				}
+							const buildRunIntent = /((build|compile)( and)? run|run( and)? build|build then run|build & run|run & build|run application|run the app|build the app|build application|start application|start the app)/i;
+							if (buildRunIntent.test(userInput) || buildRunIntent.test(terminalCommand)) {
+								const type = await detectProjectType();
+								if (type === 'dotnet') {
+									terminalCommand = 'dotnet build && dotnet run';
+								} else if (type === 'node') {
+									terminalCommand = 'npm run build && npm start';
+								}
+							} else if (/^(build|run|test)( the)?( app| application)?$/i.test(terminalCommand)) {
+								const { command: buildCmd } = await getBuildCommandForProject();
+								terminalCommand = buildCmd;
+							}
+
+				// If the user said "open the terminal and run my tests" or similar, ensure both actions are performed in sequence
+							const openAndTestIntent = /(open( the)? terminal( and)? run( my)? tests?)/i;
+							if (openAndTestIntent.test(userInput)) {
+								await vscode.commands.executeCommand('workbench.action.terminal.toggleTerminal');
+								await new Promise(res => setTimeout(res, 300));
+								const { command: testCmd, language } = await getTestCommandForProject();
+								let detectedMsg = `Detected project type: ${language}`;
+								let terminal = vscode.window.activeTerminal;
+								if (!terminal) {
+									terminal = vscode.window.createTerminal('NLC Terminal');
+								}
+								terminal.show();
+								terminal.sendText(testCmd, true);
+								const infoMsg = `${detectedMsg}\nOpened terminal and ran: ${testCmd}`;
+								vscode.window.showInformationMessage(infoMsg);
+								if (chatSidebarProvider && typeof chatSidebarProvider.sendUserMessageToChat === 'function') {
+									chatSidebarProvider.sendUserMessageToChat(infoMsg);
+								}
+								return;
+							}
+
 				// Translate if running in PowerShell
 				if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
 					terminalCommand = translateToPowerShell(terminalCommand);
