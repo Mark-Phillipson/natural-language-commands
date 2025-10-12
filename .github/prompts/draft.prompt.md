@@ -1,3 +1,1 @@
-when we get to a point where a command cannot be matched to anything in Visual Studio code, for example a menu item or a Visual Studio command or a terminal command can we automatically load up Github copilot with the context of the current command?
-
-For example if I accidentally enter something that is not really a command as per the screenshot.
+When we enter a new command and it is not possible to identify it with the specific percentage of accuracy, we should automatically load up  the webview sidebar chat so the user can have a conversation about their command with a large language model and not just simply log a message in the notifications.
