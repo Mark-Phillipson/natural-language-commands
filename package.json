@@ -38,13 +38,13 @@
       "commandHistoryContainer": [
         {
           "id": "nlcChatView",
-          "name": "NLC Chat",
+          "name": "Chat",
           "icon": "natural-language-commands.png",
           "type": "webview"
         },
         {
           "id": "commandHistoryView",
-          "name": "Natural Language Commands",
+          "name": "Example Commands",
           "icon": "natural-language-commands.png"
         },
         {
