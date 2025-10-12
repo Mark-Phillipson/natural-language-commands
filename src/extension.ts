@@ -1,3 +1,7 @@
+// Type declaration for global fallback user input
+declare global {
+	var lastNLCUserInput: string | undefined;
+}
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
@@ -14,6 +18,15 @@ import { detectProjectType, getTestCommandForProject, getBuildCommandForProject 
 	const HISTORY_LIMIT = 20;
 
 export function activate(context: vscode.ExtensionContext) {
+	// Command to focus the NLC Chat sidebar tab specifically
+	context.subscriptions.push(
+		vscode.commands.registerCommand('nlc.focusChatTab', async () => {
+			// Focus the custom container
+			await vscode.commands.executeCommand('workbench.view.extension.commandHistoryContainer');
+			// Focus the chat tab (webview view)
+			await vscode.commands.executeCommand('workbench.action.focusView.nlcChatView');
+		})
+	);
 	// Command to focus the NLC Chat sidebar
 	context.subscriptions.push(
 		vscode.commands.registerCommand('nlc.focusChatSidebar', async () => {
@@ -246,33 +259,36 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 	// Register a command to show all sidebars and focus the selected one
-	context.subscriptions.push(
-		vscode.commands.registerCommand('nlc.showSidebars', async () => {
-			// Add built-in and popular extension sidebars (e.g., Cursorless)
-			const sidebars = [
-				{ label: 'Explorer', command: 'workbench.view.explorer' },
-				{ label: 'Source Control', command: 'workbench.view.scm' },
-				{ label: 'Run & Debug', command: 'workbench.view.debug' },
-				{ label: 'Extensions', command: 'workbench.view.extensions' },
-				{ label: 'Remote Explorer', command: 'workbench.view.remote' },
-				{ label: 'Testing', command: 'workbench.view.testing' },
-				{ label: 'Outline', command: 'outline.focus' },
-				{ label: 'Comments', command: 'workbench.panel.comments' },
-				{ label: 'Timeline', command: 'timeline.focus' },
-				{ label: 'Notebooks', command: 'notebook.focus' },
-				{ label: 'Cursorless', command: 'workbench.view.extension.cursorless' },
-				// Add more extension sidebars here as needed
-			];
-			// TODO: Optionally load user-custom sidebars from settings
-			const pick = await vscode.window.showQuickPick(sidebars, {
-				placeHolder: 'Select a sidebar to focus:',
-				canPickMany: false
-			});
-			if (pick && pick.command) {
-				vscode.commands.executeCommand(pick.command);
-			}
-		})
-	);
+       context.subscriptions.push(
+	       vscode.commands.registerCommand('nlc.showSidebars', async () => {
+		       const sidebars = [
+			       { label: 'Explorer', command: 'workbench.view.explorer' },
+			       { label: 'Source Control', command: 'workbench.view.scm' },
+			       { label: 'Run & Debug', command: 'workbench.view.debug' },
+			       { label: 'Extensions', command: 'workbench.view.extensions' },
+			       { label: 'Remote Explorer', command: 'workbench.view.remote' },
+			       { label: 'Testing', command: 'workbench.view.testing' },
+			       { label: 'Outline', command: 'outline.focus' },
+			       { label: 'Comments', command: 'workbench.panel.comments' },
+			       { label: 'Timeline', command: 'timeline.focus' },
+			       { label: 'Notebooks', command: 'notebook.focus' },
+			       { label: 'Cursorless', command: 'workbench.view.extension.cursorless' },
+		       ];
+		       const pick = await vscode.window.showQuickPick(sidebars, {
+			       placeHolder: 'Select a sidebar to focus:',
+			       canPickMany: false
+		       });
+		       if (pick && pick.command) {
+			       vscode.commands.executeCommand(pick.command);
+		       } else {
+			       vscode.window.showWarningMessage('No sidebar selected or sidebar picker was cancelled. Redirecting to chat for clarification.');
+			       await vscode.commands.executeCommand('nlc.focusChatTab');
+			       if (typeof globalThis.lastNLCUserInput === 'string') {
+				   await chatSidebarProvider.sendUserMessageToChat(globalThis.lastNLCUserInput);
+			       }
+		       }
+	       })
+       );
 	// Register a command to simulate the Terminal menu
 	context.subscriptions.push(
 		vscode.commands.registerCommand('nlc.termMenu', async () => {
@@ -457,10 +473,12 @@ export function activate(context: vscode.ExtensionContext) {
 		function stripPleasePrefix(text: string): string {
 			return text.replace(/^\s*please\s*[,:]?\s*/i, '');
 		}
-		const trimmedInput = stripPleasePrefix(userInput.trim());
+	const trimmedInput = stripPleasePrefix(userInput.trim());
+	// Store last user input globally for fallback in pickers
+	globalThis.lastNLCUserInput = userInput;
 		// Special case: respond to "what can I say" directly in chat
 		if (/^what can i say\??$/i.test(trimmedInput)) {
-			await vscode.commands.executeCommand('nlc.focusChatSidebar');
+					await vscode.commands.executeCommand('nlc.focusChatTab');
 			const exampleList = [
 				'Open the file menu',
 				'Show all sidebars',
@@ -484,7 +502,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 		// Special case: respond to "what can I say" directly in chat
 		if (/^what can i say\??$/i.test(trimmedInput)) {
-			await vscode.commands.executeCommand('nlc.focusChatSidebar');
+					await vscode.commands.executeCommand('nlc.focusChatTab');
 			const exampleList = [
 				'Open the file menu',
 				'Show all sidebars',
@@ -584,7 +602,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// If parsed.command is present, execute it directly
 			if (parsed.command && typeof parsed.command === 'string' && parsed.command.trim().length > 0) {
-				const trimmed = parsed.command.trim();
+				let trimmed = parsed.command.trim();
+				// Fix common LLM typo for sidebar toggle command
+				if (trimmed === 'workbench.action.togglesidebarVisibility') {
+					vscode.window.showWarningMessage('[NLC FIX] LLM returned invalid command workbench.action.togglesidebarVisibility. Using workbench.action.toggleSidebarVisibility instead.');
+					trimmed = 'workbench.action.toggleSidebarVisibility';
+				}
 				// Custom mapping for VoiceLauncher table listing intent
 				if (/list (all )?tables( available)? in (my )?(voice ?launcher|voicelauncher)/i.test(trimmed) ||
 					/show (me )?(all )?tables( in)? (my )?(voice ?launcher|voicelauncher)/i.test(trimmed)) {
@@ -597,7 +620,9 @@ export function activate(context: vscode.ExtensionContext) {
 				if (result !== undefined) {
 					vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
 				} else {
-					vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+					vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}. Redirecting to chat for clarification.`);
+					await vscode.commands.executeCommand('nlc.focusChatSidebar');
+					await chatSidebarProvider.sendUserMessageToChat(userInput);
 				}
 				return;
 			}
@@ -748,27 +773,36 @@ export function activate(context: vscode.ExtensionContext) {
 						}
 
 
+			// DEBUG: Log the user input and parsed LLM result
+			vscode.window.showInformationMessage(`[NLC DEBUG] User input: ${userInput}`);
+			vscode.window.showInformationMessage(`[NLC DEBUG] LLM parsed result: ${JSON.stringify(parsed)}`);
 			// CENTRALIZED INTENT OVERRIDE: If intent or command matches, always show Command History sidebar and return
 			const intentStr = parsed?.intent?.toLowerCase() || '';
 			const commandStr = parsed?.command?.toLowerCase() || '';
-			vscode.window.showInformationMessage(`[NLC DEBUG] Actual intent string: ${intentStr}`);
 			if (
+				/(command history|history sidebar|show command history|see command history|open command history|nlc history|natural language command history|timeline|file history|history|command log|command timeline)/i.test(userInput.toLowerCase()) ||
 				/(command history|history sidebar|show command history|see command history|open command history|nlc history|natural language command history|timeline|file history|history|command log|command timeline)/i.test(intentStr) ||
 				/(command history|history sidebar|show command history|see command history|open command history|nlc history|natural language command history|timeline|file history|history|command log|command timeline)/i.test(commandStr)
 			) {
-				vscode.window.showInformationMessage('[NLC OVERRIDE] Intent or command matched: Opening Command History Sidebar (commandHistory.focus)');
+				vscode.window.showInformationMessage('[NLC OVERRIDE] Intent, command, or user input matched: Opening Command History Sidebar (commandHistory.focus)');
 				await vscode.commands.executeCommand('commandHistory.focus');
 				return; // Do not process any further commands, even if LLM.command is set
 			} else {
-				vscode.window.showInformationMessage('[NLC DEBUG] Intent/command did not match command history sidebar.');
+				vscode.window.showInformationMessage('[NLC DEBUG] Intent/command/user input did not match command history sidebar.');
 			}
 
 			// Fallback: try to map sidebar/activity bar requests
 			const mapped = mapSidebarCommand(userInput);
 			if (mapped) {
 				vscode.window.showInformationMessage(`[NLC FALLBACK] Sidebar fallback triggered: ${mapped}`);
-				await vscode.commands.executeCommand(mapped);
-				vscode.window.showInformationMessage(`[NLC FALLBACK] Executed VS Code command (sidebar fallback): ${mapped}`);
+				const result = await vscode.commands.executeCommand(mapped);
+				if (result !== undefined) {
+					vscode.window.showInformationMessage(`[NLC FALLBACK] Executed VS Code command (sidebar fallback): ${mapped}`);
+				} else {
+					vscode.window.showWarningMessage(`[NLC FALLBACK] Command not found or failed: ${mapped}. Redirecting to chat for clarification.`);
+					await vscode.commands.executeCommand('nlc.focusChatSidebar');
+					await chatSidebarProvider.sendUserMessageToChat(userInput);
+				}
 				return;
 			} else {
 				vscode.window.showInformationMessage('[NLC FALLBACK] Sidebar fallback not triggered. No mapping found.');
@@ -854,18 +888,25 @@ export function activate(context: vscode.ExtensionContext) {
 			const confidence = parsed.confidence;
 			const altCommands = parsed.alternatives;
 
-			// If parsed.command is present, execute it directly
-			if (parsed.command && typeof parsed.command === 'string' && parsed.command.trim().length > 0) {
-				const trimmed = parsed.command.trim();
-				vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
-				const result = await vscode.commands.executeCommand(trimmed);
-				if (result !== undefined) {
-					vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
-				} else {
-					vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
-				}
-				return;
-			}
+			   // Always use custom sidebar picker for sidebar-related requests
+			   const sidebarMapped = mapSidebarCommand(userInput);
+			   if (sidebarMapped === 'natural-language-commands.showSidebars') {
+				   vscode.window.showInformationMessage('Sidebar intent detected: opening custom sidebar picker.');
+				   await vscode.commands.executeCommand('nlc.showSidebars');
+				   return;
+			   }
+			   // If parsed.command is present, execute it directly
+			   if (parsed.command && typeof parsed.command === 'string' && parsed.command.trim().length > 0) {
+				   const trimmed = parsed.command.trim();
+				   vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
+				   const result = await vscode.commands.executeCommand(trimmed);
+				   if (result !== undefined) {
+					   vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+				   } else {
+					   vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+				   }
+				   return;
+			   }
 
 			// If parsed.terminal is present, run it in the integrated terminal
 			if (parsed.terminal && typeof parsed.terminal === 'string' && parsed.terminal.trim().length > 0) {
