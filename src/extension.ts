@@ -370,9 +370,6 @@ export function activate(context: vscode.ExtensionContext) {
 	// Set up command history provider for the sidebar
 	const commandHistoryProvider = new CommandHistoryProvider();
 	vscode.window.registerTreeDataProvider('commandHistoryView', commandHistoryProvider);
-	// Register a second section for example commands
-	const exampleCommandsProvider = new (require('./commandHistoryProvider').ExampleCommandsProvider)();
-	vscode.window.registerTreeDataProvider('exampleCommandsView', exampleCommandsProvider);
 	// Register a command to focus/reveal the Command History sidebar
 	let commandHistoryTreeView: vscode.TreeView<any> | undefined;
 	context.subscriptions.push(

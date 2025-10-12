@@ -1,41 +1,4 @@
-export class ExampleCommandsProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-    private static examples: string[] = [
-        'Clear the command history',
-        'Create a new file called hello.txt',
-        'Find all TODO comments in the workspace',
-        'Open settings in JSON view',
-        'Open the debug console',
-        'Open the explorer',
-        'Open the terminal and run my tests (integrated terminal, not the top menu)',
-        'Show the terminal menu (top menu, not the integrated terminal)',
-        'Show all sidebars',
-        'Show the edit menu',
-        'Show the selection menu',
-        'Show the view menu',
-        'Show the go menu',
-        'Show the run menu',
-        'Show the help menu',
-        'Run the build task',
-        'Show me my extensions',
-        'Show me the command history sidebar',
-        'Show me the output panel',
-        'Show me the keyboard shortcuts',
-        'Show me the settings in JSON',
-        'Show me the problems panel',
-        'Switch to the source control view',
-        'What is the current git branch?',
-    ];
-    private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | void> = new vscode.EventEmitter<vscode.TreeItem | undefined | void>();
-    readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | void> = this._onDidChangeTreeData.event;
-    getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
-        return element;
-    }
-    getChildren(): Thenable<vscode.TreeItem[]> {
-        return Promise.resolve(ExampleCommandsProvider.examples.map(
-            ex => new vscode.TreeItem(ex, vscode.TreeItemCollapsibleState.None)
-        ));
-    }
-}
+
 import * as vscode from 'vscode';
 
 export interface CommandHistoryItem {

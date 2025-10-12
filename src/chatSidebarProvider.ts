@@ -359,6 +359,12 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
     <title>NLC Chat Sidebar</title>
 </head>
 <body style="margin:0;padding:0;display:flex;flex-direction:column;height:100vh;background:#1e1e1e;color:white;font-family:Arial,sans-serif;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px 0 20px;background:#232323;border-bottom:1px solid #333;">
+        <span style="font-size:1.1em;font-weight:bold;letter-spacing:0.5px;">NLC Chat</span>
+        <button id="clear-chat-btn" title="Clear Chat (Alt+L)" accesskey="l" style="background:#2d2d2d;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:13px;transition:background 0.2s;outline:none;">
+            🧹 Clear Chat
+        </button>
+    </div>
     <div id="chat-container" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;"></div>
     <div style="padding:16px;border-top:2px solid #444;display:flex;gap:8px;background:#2d2d2d;align-items:center;position:relative;z-index:1;">
         <input type="text" id="user-input" accesskey="c" placeholder="Type your command here... (Press Enter to send, Alt+C to focus)" title="Press Enter to send message" style="flex:1;padding:10px;background:#3c3c3c;color:white;border:1px solid #555;font-size:14px;" />
@@ -369,8 +375,9 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
             const vscode = acquireVsCodeApi();
             const chatContainer = document.getElementById('chat-container');
             const userInput = document.getElementById('user-input');
-            if (!chatContainer || !userInput) {
-                console.error('Sidebar chat: One or more DOM elements not found:', { chatContainer, userInput });
+            const clearBtn = document.getElementById('clear-chat-btn');
+            if (!chatContainer || !userInput || !clearBtn) {
+                console.error('Sidebar chat: One or more DOM elements not found:', { chatContainer, userInput, clearBtn });
                 return;
             }
             function addMessage(role, content) {
@@ -391,6 +398,9 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                 vscode.postMessage({ type: 'userMessage', text });
                 userInput.value = '';
             }
+            clearBtn.addEventListener('click', function() {
+                chatContainer.innerHTML = '';
+            });
             userInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     sendMessage();
@@ -424,7 +434,7 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
             focusInput();
         } catch (err) {
             console.error('Sidebar chat script error:', err);
-            document.getElementById('debug-log').textContent += ' [ERROR: ' + err + ']';
+            // document.getElementById('debug-log').textContent += ' [ERROR: ' + err + ']';
         }
     });
     </script>
