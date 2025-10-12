@@ -29,7 +29,7 @@
       "activitybar": [
         {
           "id": "commandHistoryContainer",
-          "title": "Command History",
+          "title": "Natural Language Commands",
           "icon": "nlc-history.svg"
         }
       ]
@@ -44,7 +44,7 @@
         },
         {
           "id": "commandHistoryView",
-          "name": "Command History",
+          "name": "Natural Language Commands",
           "icon": "natural-language-commands.png"
         },
         {
