@@ -8,6 +8,17 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
 
     // Shared menu simulation definitions
     private static readonly menuSimulations: { [key: string]: { label: string, command: string }[] } = {
+            'file': [
+                { label: 'New File', command: 'explorer.newFile' },
+                { label: 'Open File...', command: 'workbench.action.files.openFile' },
+                { label: 'Open Folder...', command: 'workbench.action.files.openFolder' },
+                { label: 'Save', command: 'workbench.action.files.save' },
+                { label: 'Save As...', command: 'workbench.action.files.saveAs' },
+                { label: 'Save All', command: 'workbench.action.files.saveAll' },
+                { label: 'Close Editor', command: 'workbench.action.closeActiveEditor' },
+                { label: 'Close Folder', command: 'workbench.action.closeFolder' },
+                { label: 'Reopen Closed Editor', command: 'workbench.action.reopenClosedEditor' },
+            ],
             'edit': [
                 { label: 'Undo', command: 'undo' },
                 { label: 'Redo', command: 'redo' },
@@ -91,10 +102,20 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
             if (menuRegex.test(normText)) {
                 const actions = menuSimulations[menu];
                 this._sendMessageToWebview('addMessage', { role: 'assistant', content: `Simulating the ${menu.charAt(0).toUpperCase() + menu.slice(1)} menu. Please select an action from the menu above.` });
-                vscode.window.showQuickPick(actions, { placeHolder: `Select a ${menu} action to run:`, canPickMany: false }).then(pick => {
+                vscode.window.showQuickPick(actions, { placeHolder: `Select a ${menu} action to run:`, canPickMany: false }).then(async pick => {
                     if (pick && pick.command) {
-                        vscode.commands.executeCommand(pick.command);
-                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: `✅ Ran ${menu.charAt(0).toUpperCase() + menu.slice(1)} menu action: ${pick.label}` });
+                        try {
+                            await vscode.commands.executeCommand(pick.command);
+                            this._sendMessageToWebview('addMessage', { role: 'assistant', content: `✅ Ran ${menu.charAt(0).toUpperCase() + menu.slice(1)} menu action: ${pick.label}` });
+                        } catch (err) {
+                            let msg = 'Unknown error';
+                            if (err && typeof err === 'object' && 'message' in err) {
+                                msg = (err as any).message;
+                            } else if (typeof err === 'string') {
+                                msg = err;
+                            }
+                            this._sendMessageToWebview('addMessage', { role: 'assistant', content: `❌ Failed to run ${menu.charAt(0).toUpperCase() + menu.slice(1)} menu action: ${pick.label}\nError: ${msg}` });
+                        }
                     } else {
                         this._sendMessageToWebview('addMessage', { role: 'assistant', content: `No ${menu.charAt(0).toUpperCase() + menu.slice(1)} menu action selected.` });
                     }
@@ -109,10 +130,10 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
      * Programmatically send a user message to the chat and trigger LLM response as if the user typed it.
      */
     public async sendUserMessageToChat(text: string) {
-        // Special case: trigger new command interface for 'show all sidebars' in chat
+        // Special case: trigger sidebar picker for 'show all sidebars' in chat
         if (/^show (all )?sidebars?\??$/i.test(text.trim())) {
             this._sendMessageToWebview('addMessage', { role: 'assistant', content: 'Opening the interactive sidebar picker...' });
-            vscode.commands.executeCommand('natural-language-commands.new');
+            vscode.commands.executeCommand('nlc.showSidebars');
             return;
         }
 
@@ -234,10 +255,10 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
             async message => {
                 if (message.type === 'userMessage') {
                     this._sendMessageToWebview('addMessage', { role: 'user', content: message.text });
-                    // Special case: trigger new command interface for 'show all sidebars' in chat
+                    // Special case: trigger sidebar picker for 'show all sidebars' in chat
                     if (/^show (all )?sidebars?\??$/i.test(message.text.trim())) {
                         this._sendMessageToWebview('addMessage', { role: 'assistant', content: 'Opening the interactive sidebar picker...' });
-                        vscode.commands.executeCommand('natural-language-commands.new');
+                        vscode.commands.executeCommand('nlc.showSidebars');
                         return;
                     }
                     if (/^what can i say\??$/i.test(message.text.trim())) {
@@ -362,7 +383,7 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px 0 20px;background:#232323;border-bottom:1px solid #333;">
         <span style="font-size:1.1em;font-weight:bold;letter-spacing:0.5px;">NLC Chat</span>
         <button id="clear-chat-btn" title="Clear Chat (Alt+L)" accesskey="l" style="background:#2d2d2d;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:13px;transition:background 0.2s;outline:none;">
-            🧹 Clear Chat
+            🧹 C<span style='text-decoration:underline'>l</span>ear Chat <span style="font-size:11px;opacity:0.7;">(Alt+L)</span>
         </button>
     </div>
     <div id="chat-container" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;"></div>

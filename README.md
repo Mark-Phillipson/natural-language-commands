@@ -1,10 +1,11 @@
+
 ## Accessibility & Productivity
 
 This extension is designed to make VS Code more accessible and productive for everyone:
 
 - **Accessibility:** Users who have difficulty remembering command names, keyboard shortcuts, or menu navigation can simply use natural language to perform actions. This is especially helpful for people with less-than-perfect memory or cognitive challenges.
 - **Productivity:** No need to memorize complex key combinations or search through menus—just describe what you want to do in plain English.
-- **Discoverability:** The extension’s command history and example sidebar make it easy to recall and reuse previous actions, further reducing cognitive load.
+- **Discoverability:** The extension’s command history makes it easy to recall and reuse previous actions, further reducing cognitive load.
 
 
 # Natural Language Commands for VS Code
@@ -17,7 +18,7 @@ This extension lets you run VS Code commands using natural language. It integrat
 - Run VS Code or terminal commands using plain English
 - Simulated menus for File, Edit, Selection, View, Go, Run, Terminal, and Help (via QuickPick)
 - Sidebar and activity bar navigation (including custom sidebars)
-- Command history and example commands sidebar
+- Command history sidebar
 - Choose your preferred OpenAI model
 - Debug mode to show raw LLM responses
 - Status bar alert icon for notifications
@@ -51,7 +52,7 @@ Native top menus (File, Edit, Selection, View, Go, Run, Terminal, Help) cannot b
 Say "show all sidebars" to get a filterable list of all sidebars (Explorer, Source Control, Run & Debug, Extensions, etc.) and focus the one you select.
 
 ### Command History
-The extension keeps a session-based and persistent command history, accessible via the custom sidebar. You can also view example commands in a dedicated sidebar view.
+The extension keeps a session-based and persistent command history, accessible via the custom sidebar.
 
 ## Extension Commands
 
@@ -61,7 +62,6 @@ The extension keeps a session-based and persistent command history, accessible v
 | natural-language-commands.new                   | New Command (direct input)                |
 | natural-language-commands.debugMenu             | Debugging Commands (simulated menu)       |
 | natural-language-commands.listTablesVoiceLauncher| List all tables in VoiceLauncher DB       |
-| natural-language-commands.examples              | Show example natural language commands    |
 | nlc.fileMenu                                    | Simulated File menu                       |
 | nlc.editMenu                                    | Simulated Edit menu                       |
 | nlc.selMenu                                     | Simulated Selection menu                  |
