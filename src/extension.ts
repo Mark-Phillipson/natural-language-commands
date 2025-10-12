@@ -720,6 +720,23 @@ export function activate(context: vscode.ExtensionContext) {
 			} else {
 				vscode.window.showInformationMessage('[NLC FALLBACK] Sidebar fallback not triggered. No mapping found.');
 			}
+
+			// If we reach here, the command was not recognized with high confidence.
+			// If confidence is low or no actionable command, open the sidebar chat for clarification and send the user input to chat.
+			if (typeof confidence === 'number' && confidence < 0.7) {
+				vscode.window.showWarningMessage('Could not confidently identify your command. Opening the chat sidebar for clarification.');
+				await vscode.commands.executeCommand('nlc.focusChatSidebar');
+				// Send the user input to the chat sidebar for LLM response
+				await chatSidebarProvider.sendUserMessageToChat(userInput);
+				return;
+			}
+			// If confidence is missing (undefined/null), also open chat sidebar and send user input
+			if (typeof confidence !== 'number') {
+				vscode.window.showWarningMessage('Could not identify your command. Opening the chat sidebar for clarification.');
+				await vscode.commands.executeCommand('nlc.focusChatSidebar');
+				await chatSidebarProvider.sendUserMessageToChat(userInput);
+				return;
+			}
 		}
 		catch (err: any) {
 			vscode.window.showErrorMessage(`OpenAI API error: ${err.message || err}`);
@@ -864,6 +881,22 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			} else {
 				vscode.window.showInformationMessage('Sidebar fallback not triggered. No mapping found.');
+			}
+
+			// If we reach here, the command was not recognized with high confidence.
+			// If confidence is low or no actionable command, open the sidebar chat for clarification and send the user input to chat.
+			if (typeof confidence === 'number' && confidence < 0.7) {
+				vscode.window.showWarningMessage('Could not confidently identify your command. Opening the chat sidebar for clarification.');
+				await vscode.commands.executeCommand('nlc.focusChatSidebar');
+				await chatSidebarProvider.sendUserMessageToChat(userInput);
+				return;
+			}
+			// If confidence is missing (undefined/null), also open chat sidebar and send user input
+			if (typeof confidence !== 'number') {
+				vscode.window.showWarningMessage('Could not identify your command. Opening the chat sidebar for clarification.');
+				await vscode.commands.executeCommand('nlc.focusChatSidebar');
+				await chatSidebarProvider.sendUserMessageToChat(userInput);
+				return;
 			}
 		}
 		catch (err: any) {

@@ -4,7 +4,77 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'nlcChatView';
     private _view?: vscode.WebviewView;
 
+
     constructor(private readonly _extensionUri: vscode.Uri) {}
+
+
+    /**
+     * Programmatically send a user message to the chat and trigger LLM response as if the user typed it.
+     */
+    public async sendUserMessageToChat(text: string) {
+        if (!this._view) {
+            // If the view is not yet resolved, do nothing (should be resolved before calling this)
+            return;
+        }
+        // Add the user message visually
+        this._sendMessageToWebview('addMessage', { role: 'user', content: text });
+        // LLM integration: call getLLMResult and display response (duplicate logic from onDidReceiveMessage)
+        try {
+            const { getLLMResult } = await import('./llm.js');
+            const apiKey = process.env.OPENAI_API_KEY;
+            if (!apiKey) {
+                this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ OpenAI API key not found. Please set OPENAI_API_KEY in your .env file.' });
+                return;
+            }
+            const model = 'gpt-4o';
+            const llmResult = await getLLMResult(apiKey, text, model);
+            if (llmResult.error) {
+                this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ LLM error: ' + llmResult.error });
+            } else {
+                let reply = '';
+                if (llmResult.intent) { reply += `Intent: ${llmResult.intent}\n`; }
+                if (llmResult.command) { reply += `VS Code Command: ${llmResult.command}\n`; }
+                if (llmResult.terminal) { reply += `Terminal Command: ${llmResult.terminal}\n`; }
+                if (llmResult.search) { reply += `Search: ${llmResult.search}\n`; }
+                if (llmResult.confidence !== undefined) { reply += `Confidence: ${Math.round(llmResult.confidence * 100)}%\n`; }
+                if (llmResult.alternatives && llmResult.alternatives.length > 0) {
+                    reply += `Alternatives:\n`;
+                    llmResult.alternatives.forEach((alt: any, i: number) => {
+                        reply += `  - ${alt.command || alt.terminal || 'N/A'}: ${alt.description || ''}\n`;
+                    });
+                }
+                const confidence = llmResult.confidence || 0;
+                const hasCommand = !!llmResult.command;
+                const hasTerminal = !!llmResult.terminal;
+                if ((hasCommand || hasTerminal) && confidence >= 0.9) {
+                    if (hasCommand) {
+                        vscode.commands.executeCommand(llmResult.command!);
+                        reply += `\n✅ Executed VS Code command: ${llmResult.command}`;
+                    } else if (hasTerminal) {
+                        let terminal = vscode.window.activeTerminal;
+                        if (!terminal) {
+                            terminal = vscode.window.createTerminal('NLC Terminal');
+                        }
+                        terminal.show();
+                        terminal.sendText(llmResult.terminal!, true);
+                        reply += `\n✅ Executed terminal command: ${llmResult.terminal}`;
+                    }
+                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
+                } else {
+                    reply += '\n🤖 I need a bit more detail or clarification before I can run a command. Please rephrase or provide more information.';
+                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
+                }
+            }
+        } catch (err) {
+            let msg = 'Unknown error';
+            if (err && typeof err === 'object' && 'message' in err) {
+                msg = (err as any).message;
+            } else if (typeof err === 'string') {
+                msg = err;
+            }
+            this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ Error calling LLM: ' + msg });
+        }
+    }
 
     public resolveWebviewView(
         webviewView: vscode.WebviewView,
