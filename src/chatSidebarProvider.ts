@@ -116,25 +116,18 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
     <title>NLC Chat Sidebar</title>
 </head>
 <body style="margin:0;padding:0;display:flex;flex-direction:column;height:100vh;background:#1e1e1e;color:white;font-family:Arial,sans-serif;">
-    <div style="background:lime;color:black;padding:16px;text-align:center;font-size:20px;font-weight:bold;border:3px solid orange;">✅ SIDEBAR CHAT (${new Date().toLocaleTimeString()})</div>
-    <div id="debug-log" style="background:black;color:lime;padding:4px;font-size:12px;"></div>
-    <div id="chat-container" style="flex:1;overflow-y:auto;padding:20px;max-height:60vh;display:flex;flex-direction:column;"></div>
-    <div style="padding:16px;border-top:2px solid #444;display:flex;gap:8px;background:#2d2d2d;align-items:center;">
-        <label for="user-input" style="color:#aaa;font-size:13px;margin-right:6px;">Chat <span style="color:#0e639c;font-weight:bold;">(Alt+C)</span></label>
-        <input type="text" id="user-input" accesskey="c" placeholder="Type your command here..." style="flex:1;padding:10px;background:#3c3c3c;color:white;border:1px solid #555;font-size:14px;" />
-    <button id="send-button" accesskey="d" style="padding:10px 24px;background:#0e639c;color:white;border:none;cursor:pointer;font-size:14px;font-weight:bold;">Send <span style="font-size:12px;color:#fff;background:#0057b7;border-radius:3px;padding:2px 6px;margin-left:4px;">Alt+D</span></button>
+    <div id="chat-container" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;"></div>
+    <div style="padding:16px;border-top:2px solid #444;display:flex;gap:8px;background:#2d2d2d;align-items:center;position:relative;z-index:1;">
+        <input type="text" id="user-input" accesskey="c" placeholder="Type your command here... (Press Enter to send, Alt+C to focus)" title="Press Enter to send message" style="flex:1;padding:10px;background:#3c3c3c;color:white;border:1px solid #555;font-size:14px;" />
     </div>
     <script nonce="${nonce}">
     document.addEventListener('DOMContentLoaded', function() {
         try {
-            document.getElementById('debug-log').textContent = 'Sidebar script running at ' + new Date().toLocaleTimeString();
             const vscode = acquireVsCodeApi();
             const chatContainer = document.getElementById('chat-container');
             const userInput = document.getElementById('user-input');
-            const sendButton = document.getElementById('send-button');
-            if (!chatContainer || !userInput || !sendButton) {
-                console.error('Sidebar chat: One or more DOM elements not found:', { chatContainer, userInput, sendButton });
-                document.getElementById('debug-log').textContent += ' [ERROR: DOM elements missing]';
+            if (!chatContainer || !userInput) {
+                console.error('Sidebar chat: One or more DOM elements not found:', { chatContainer, userInput });
                 return;
             }
             function addMessage(role, content) {
@@ -155,7 +148,6 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                 vscode.postMessage({ type: 'userMessage', text });
                 userInput.value = '';
             }
-            sendButton.onclick = sendMessage;
             userInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     sendMessage();
@@ -177,14 +169,11 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden) focusInput();
             });
-            // Also support focusing input with Alt+C and sending with Alt+D
+            // Also support focusing input with Alt+C
             document.addEventListener('keydown', (e) => {
                 if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
                     if (e.code === 'KeyC') {
                         userInput.focus();
-                        e.preventDefault();
-                    } else if (e.code === 'KeyD') {
-                        sendButton.click();
                         e.preventDefault();
                     }
                 }
