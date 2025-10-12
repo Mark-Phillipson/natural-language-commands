@@ -37,6 +37,12 @@
     "views": {
       "commandHistoryContainer": [
         {
+          "id": "nlcChatView",
+          "name": "NLC Chat",
+          "icon": "natural-language-commands.png",
+          "type": "webview"
+        },
+        {
           "id": "commandHistoryView",
           "name": "Command History",
           "icon": "natural-language-commands.png"
@@ -49,6 +55,11 @@
       ]
     },
     "commands": [
+      {
+        "command": "nlc.focusChatSidebar",
+        "title": "Focus on NLC Chat View",
+        "category": "NLC"
+      },
       {
         "command": "natural-language-commands.run",
         "title": "Run Command...",
@@ -69,11 +80,7 @@
         "title": "Re-run from History",
         "category": "NLC"
       },
-      {
-        "command": "commandHistory.focus",
-        "title": "Show History Sidebar",
-        "category": "NLC"
-      },
+
       {
         "command": "commandHistory.deleteItem",
         "title": "Delete from History",
@@ -83,7 +90,7 @@
         "command": "natural-language-commands.debugMenu",
         "title": "Debugging Commands",
         "category": "NLC"
-      }
+  }
     ],
     "menus": {
       "view/title": [

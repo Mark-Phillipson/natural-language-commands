@@ -1,18 +1,33 @@
-
-
-	import * as vscode from 'vscode';
+import * as vscode from 'vscode';
 	import * as path from 'path';
 	import * as dotenv from 'dotenv';
 	import { getLLMResult, LLMResult } from './llm';
 	import { mapSidebarCommand } from './sidebarMap';
 	import { NotificationManager } from './notificationManager';
 	import { CommandHistoryProvider, CommandHistoryItem } from './commandHistoryProvider';
+	// Removed ChatPanel import (sidebar chat is now the only chat UI)
+	import { ChatSidebarProvider } from './chatSidebarProvider';
 
 	// Helper for command history
 	const HISTORY_KEY = 'nlc.commandHistory';
 	const HISTORY_LIMIT = 20;
 
 export function activate(context: vscode.ExtensionContext) {
+	// Command to focus the NLC Chat sidebar
+	context.subscriptions.push(
+		vscode.commands.registerCommand('nlc.focusChatSidebar', async () => {
+			// Only focus the Command History container (activity bar); chat tab is first
+			await vscode.commands.executeCommand('workbench.view.extension.commandHistoryContainer');
+		})
+	);
+	// Register the sidebar chat webview view provider
+	const chatSidebarProvider = new ChatSidebarProvider(context.extensionUri);
+	context.subscriptions.push(
+		vscode.window.registerWebviewViewProvider(
+			ChatSidebarProvider.viewType,
+			chatSidebarProvider
+		)
+	);
 	// Helper: Detect project type in the workspace or current folder
 	async function detectProjectType(): Promise<'dotnet' | 'node' | 'unknown'> {
 		const folders = vscode.workspace.workspaceFolders;
@@ -40,7 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Simulated Debug menu
 	context.subscriptions.push(
 		vscode.commands.registerCommand('natural-language-commands.debugMenu', async () => {
-			vscode.window.showWarningMessage('Opening the native Debug menu is not supported by VS Code extensions. Here are common debug actions you can use instead.');
+			vscode.window.showWarningMessage('Opening the native Debug menu is not supported by VS Code extensions.\nHere are common debug actions you can use instead.');
 			const actions = [
 				{ label: 'Start Debugging', command: 'workbench.action.debug.start' },
 				{ label: 'Stop Debugging', command: 'workbench.action.debug.stop' },
@@ -136,7 +151,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Simulated Edit menu
 	context.subscriptions.push(
 		vscode.commands.registerCommand('nlc.editMenu', async () => {
-			vscode.window.showWarningMessage('Opening the native Edit menu is not supported by VS Code extensions. Here are common edit actions you can use instead.');
+			vscode.window.showWarningMessage('Opening the native Edit menu is not supported by VS Code extensions.\nHere are common edit actions you can use instead.');
 			const actions = [
 				{ label: 'Undo', command: 'undo' },
 				{ label: 'Redo', command: 'redo' },
@@ -156,7 +171,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Simulated Selection menu
 	context.subscriptions.push(
 		vscode.commands.registerCommand('nlc.selMenu', async () => {
-			vscode.window.showWarningMessage('Opening the native Selection menu is not supported by VS Code extensions. Here are common selection actions you can use instead.');
+			vscode.window.showWarningMessage('Opening the native Selection menu is not supported by VS Code extensions.\nHere are common selection actions you can use instead.');
 			const actions = [
 				{ label: 'Select All', command: 'editor.action.selectAll' },
 				{ label: 'Expand Selection', command: 'editor.action.smartSelect.expand' },
@@ -175,7 +190,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Simulated View menu
 	context.subscriptions.push(
 		vscode.commands.registerCommand('nlc.viewMenu', async () => {
-			vscode.window.showWarningMessage('Opening the native View menu is not supported by VS Code extensions. Here are common view actions you can use instead.');
+			vscode.window.showWarningMessage('Opening the native View menu is not supported by VS Code extensions.\nHere are common view actions you can use instead.');
 			const actions = [
 				{ label: 'Command Palette', command: 'workbench.action.showCommands' },
 				{ label: 'Explorer', command: 'workbench.view.explorer' },
@@ -196,7 +211,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Simulated Go menu
 	context.subscriptions.push(
 		vscode.commands.registerCommand('nlc.goMenu', async () => {
-			vscode.window.showWarningMessage('Opening the native Go menu is not supported by VS Code extensions. Here are common go actions you can use instead.');
+			vscode.window.showWarningMessage('Opening the native Go menu is not supported by VS Code extensions.\nHere are common go actions you can use instead.');
 			const actions = [
 				{ label: 'Go to File...', command: 'workbench.action.quickOpen' },
 				{ label: 'Go to Symbol...', command: 'workbench.action.gotoSymbol' },
@@ -215,7 +230,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Simulated Run menu
 	context.subscriptions.push(
 		vscode.commands.registerCommand('nlc.runMenu', async () => {
-			vscode.window.showWarningMessage('Opening the native Run menu is not supported by VS Code extensions. Here are common run actions you can use instead.');
+			vscode.window.showWarningMessage('Opening the native Run menu is not supported by VS Code extensions.\nHere are common run actions you can use instead.');
 			const actions = [
 				{ label: 'Start Debugging', command: 'workbench.action.debug.start' },
 				{ label: 'Run Without Debugging', command: 'workbench.action.debug.run' },
@@ -232,7 +247,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Simulated Help menu
 	context.subscriptions.push(
 		vscode.commands.registerCommand('nlc.helpMenu', async () => {
-			vscode.window.showWarningMessage('Opening the native Help menu is not supported by VS Code extensions. Here are common help actions you can use instead.');
+			vscode.window.showWarningMessage('Opening the native Help menu is not supported by VS Code extensions.\nHere are common help actions you can use instead.');
 			const actions = [
 				{ label: 'Welcome', command: 'workbench.action.showWelcomePage' },
 				{ label: 'Documentation', command: 'workbench.action.openDocumentationUrl' },
@@ -279,7 +294,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('nlc.termMenu', async () => {
 			vscode.window.showWarningMessage(
-				'Opening the native Terminal menu is not supported by VS Code extensions. Here are common terminal actions you can use instead.'
+				'Opening the native Terminal menu is not supported by VS Code extensions.\nHere are common terminal actions you can use instead.'
 			);
 			const actions = [
 				{ label: 'New Terminal', command: 'workbench.action.terminal.new' },
@@ -304,7 +319,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('nlc.fileMenu', async () => {
 			vscode.window.showWarningMessage(
-				'Opening the native File menu is not supported by VS Code extensions. Here are common file actions you can use instead.'
+				'Opening the native File menu is not supported by VS Code extensions.\nHere are common file actions you can use instead.'
 			);
 			const actions = [
 				{ label: 'New File', command: 'explorer.newFile' },
@@ -370,7 +385,7 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand('workbench.action.focusView.commandHistoryView');
 				vscode.window.showInformationMessage('[NLC DEBUG] Focused Command History View.');
 			} catch (err: any) {
-				vscode.window.showErrorMessage(`[NLC ERROR] Could not reveal Command History Sidebar: ${err.message || err}`);
+				vscode.window.showErrorMessage(`[NLC ERROR] Could not reveal Command History Sidebar.\n${err.message || err}`);
 			}
 		})
 	);
@@ -409,7 +424,7 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand('workbench.action.terminal.sendSequence', { text: '\u0003' });
 				vscode.window.showInformationMessage('Sent Ctrl+C to the terminal to interrupt the running process.');
 			} catch (e) {
-				vscode.window.showWarningMessage('Could not programmatically send Ctrl+C. Please manually stop the process in the terminal.');
+				vscode.window.showWarningMessage('Could not programmatically send Ctrl+C.\nPlease manually stop the process in the terminal.');
 			}
 		}
 		vscode.window.showInformationMessage('[NLC DEBUG] Handler triggered for user input.');
@@ -478,7 +493,7 @@ export function activate(context: vscode.ExtensionContext) {
 		try {
 			const apiKey = process.env.OPENAI_API_KEY;
 			if (!apiKey) {
-				vscode.window.showErrorMessage('OpenAI API key not found. Please set OPENAI_API_KEY in your .env file.');
+			vscode.window.showErrorMessage('OpenAI API key not found.\nPlease set OPENAI_API_KEY in your .env file.');
 				return;
 			}
 			// Read model and debug settings from VS Code configuration
@@ -514,7 +529,7 @@ export function activate(context: vscode.ExtensionContext) {
 							placeHolder: 'Enter database name (e.g., VoiceLauncher)'
 						}) || '';
 						if (!dbName) {
-							vscode.window.showWarningMessage('No database specified. Aborting table listing.');
+							vscode.window.showWarningMessage('No database specified.\nAborting table listing.');
 							return;
 						}
 					}
@@ -856,6 +871,8 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(newDisposable);
+
+	   // Removed naturalLanguageCommands.openChat command registration (sidebar chat only)
 }
 
 
