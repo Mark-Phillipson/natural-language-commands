@@ -18,6 +18,41 @@ import { detectProjectType, getTestCommandForProject, getBuildCommandForProject 
 	const HISTORY_LIMIT = 20;
 
 export function activate(context: vscode.ExtensionContext) {
+
+	// Helper to get OpenAI API key: check SecretStorage, then env
+	async function getOpenAIApiKey(): Promise<string | undefined> {
+		const secretKey = await context.secrets.get('OPENAI_API_KEY');
+		if (secretKey && secretKey.trim().length > 0) {
+			return secretKey;
+		}
+		return process.env.OPENAI_API_KEY;
+	}
+
+	// Command: Set or update OpenAI API key
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.setApiKey', async () => {
+			const input = await vscode.window.showInputBox({
+				prompt: 'Enter your OpenAI API key',
+				password: true,
+				ignoreFocusOut: true,
+				placeHolder: 'sk-...'
+			});
+			if (input && input.trim().length > 0) {
+				await context.secrets.store('OPENAI_API_KEY', input.trim());
+				vscode.window.showInformationMessage('OpenAI API key saved securely.');
+			} else {
+				vscode.window.showWarningMessage('No API key entered.');
+			}
+		})
+	);
+
+	// Command: Remove OpenAI API key
+	context.subscriptions.push(
+		vscode.commands.registerCommand('natural-language-commands.removeApiKey', async () => {
+			await context.secrets.delete('OPENAI_API_KEY');
+			vscode.window.showInformationMessage('OpenAI API key removed from secure storage.');
+		})
+	);
 	// Command to focus the NLC Chat sidebar tab specifically
 	context.subscriptions.push(
 		vscode.commands.registerCommand('nlc.focusChatTab', async () => {
@@ -537,11 +572,11 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 
 		try {
-			const apiKey = process.env.OPENAI_API_KEY;
-			if (!apiKey) {
-			vscode.window.showErrorMessage('OpenAI API key not found.\nPlease set OPENAI_API_KEY in your .env file.');
-				return;
-			}
+			   const apiKey = await getOpenAIApiKey();
+			   if (!apiKey) {
+				   vscode.window.showErrorMessage('OpenAI API key not found. Use the "Set OpenAI API Key" command or set OPENAI_API_KEY in your .env file.');
+				   return;
+			   }
 			// Read model and debug settings from VS Code configuration
 			const config = vscode.workspace.getConfiguration();
 			const model = config.get<string>('naturalLanguageCommands.model', 'gpt-4o');
@@ -907,11 +942,11 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 
 		try {
-			const apiKey = process.env.OPENAI_API_KEY;
-			if (!apiKey) {
-				vscode.window.showErrorMessage('OpenAI API key not found. Please set OPENAI_API_KEY in your .env file.');
-				return;
-			}
+			   const apiKey = await getOpenAIApiKey();
+			   if (!apiKey) {
+				   vscode.window.showErrorMessage('OpenAI API key not found. Use the "Set OpenAI API Key" command or set OPENAI_API_KEY in your .env file.');
+				   return;
+			   }
 			// Read model and debug settings from VS Code configuration
 			const config = vscode.workspace.getConfiguration();
 			const model = config.get<string>('naturalLanguageCommands.model', 'gpt-4o');

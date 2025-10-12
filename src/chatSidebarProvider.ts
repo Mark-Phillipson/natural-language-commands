@@ -221,9 +221,21 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
         // LLM integration: call getLLMResult and display response (duplicate logic from onDidReceiveMessage)
         try {
             const { getLLMResult } = await import('./llm.js');
-            const apiKey = process.env.OPENAI_API_KEY;
+            let apiKey: string | undefined;
+            if (vscode.extensions.getExtension('natural-language-commands')) {
+                // Try to get from SecretStorage if available
+                try {
+                    const ext = vscode.extensions.getExtension('natural-language-commands');
+                    if (ext && ext.isActive && ext.exports && ext.exports.context && ext.exports.context.secrets) {
+                        apiKey = await ext.exports.context.secrets.get('OPENAI_API_KEY');
+                    }
+                } catch {}
+            }
             if (!apiKey) {
-                this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ OpenAI API key not found. Please set OPENAI_API_KEY in your .env file.' });
+                apiKey = process.env.OPENAI_API_KEY;
+            }
+            if (!apiKey) {
+                this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ OpenAI API key not found. Use the "Set OpenAI API Key" command or set OPENAI_API_KEY in your .env file.' });
                 return;
             }
             const model = 'gpt-4o';

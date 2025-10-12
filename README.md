@@ -85,9 +85,33 @@ The extension keeps a session-based and persistent command history, accessible v
 	- If confidence < `confirm`, alternatives are shown or the chat sidebar is opened.
 	- Set `autoAccept` to 1 to always ask for confirmation (current behavior). Set to 0 to always auto-accept (advanced users only).
 
+
+## Providing Your OpenAI API Key
+
+This extension requires a valid OpenAI API key to function. You can provide your key in one of two ways:
+
+### 1. Securely via the Command Palette (Recommended)
+
+- Run the command **"Set OpenAI API Key"** from the Command Palette (`Ctrl+Shift+P` > type "Set OpenAI API Key").
+- Enter your OpenAI API key (it will be stored securely using VS Code's SecretStorage and never synced or exposed).
+- To remove your key, run **"Remove OpenAI API Key"** from the Command Palette.
+
+### 2. Using an Environment Variable
+
+- Create a file named `.env` in the extension root folder (or your workspace root).
+- Add the following line:
+	```
+	OPENAI_API_KEY=sk-...
+	```
+- Restart VS Code after editing the `.env` file.
+
+If both are set, the extension will use the key from secure storage first.
+
+If the key is missing, you will be prompted to set it using the command above.
+
 ## Limitations
 - Native top menus cannot be opened (simulated via QuickPick only)
-- Requires valid OpenAI API key in `.env`
+- Requires valid OpenAI API key (see above)
 
 ## Voice Control
 This extension can be used in conjunction with [Talon Voice](https://talonvoice.com/) to further enhance your workflow with hands-free, voice-driven commands in VS Code.

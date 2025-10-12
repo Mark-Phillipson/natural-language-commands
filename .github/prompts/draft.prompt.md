@@ -1,3 +1,1 @@
- can we add a new mode or setting setting the percentage threshold for auto-accepting commands without confirmation? For example, if the confidence is above 90%, just run it without asking. If it's between 70-90%, ask for confirmation. Below 70%, show alternatives. This could streamline the workflow for trusted commands while still providing safety nets for less certain ones.
-
-  If the setting is 100%, it would always ask for confirmation, effectively maintaining the current behavior. If set to 0%, it would never ask, which might be risky but could be useful for advanced users who want maximum speed.
+Can we give some thought as to how the user will input their OpenAI API key for use in the system? Ideally, they should just have it as an environmental variable, but we also need to give them the ability to type it in somewhere so we can store it securely. This needs to be documented in the README so they know how to do it.

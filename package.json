@@ -85,7 +85,17 @@
         "command": "natural-language-commands.debugMenu",
         "title": "Debugging Commands",
         "category": "NLC"
-  }
+      },
+      {
+        "command": "natural-language-commands.setApiKey",
+        "title": "Set OpenAI API Key",
+        "category": "NLC"
+      },
+      {
+        "command": "natural-language-commands.removeApiKey",
+        "title": "Remove OpenAI API Key",
+        "category": "NLC"
+      }
     ],
     "menus": {
       "view/title": [
