@@ -1,1 +1,3 @@
-Can we change the heading for the command history sidebar to Natural Language Commands?
+ can we add a new mode or setting setting the percentage threshold for auto-accepting commands without confirmation? For example, if the confidence is above 90%, just run it without asking. If it's between 70-90%, ask for confirmation. Below 70%, show alternatives. This could streamline the workflow for trusted commands while still providing safety nets for less certain ones.
+
+  If the setting is 100%, it would always ask for confirmation, effectively maintaining the current behavior. If set to 0%, it would never ask, which might be risky but could be useful for advanced users who want maximum speed.

@@ -79,6 +79,11 @@ The extension keeps a session-based and persistent command history, accessible v
 ## Extension Settings
 - `naturalLanguageCommands.model`: OpenAI model to use (default: gpt-4o)
 - `naturalLanguageCommands.debugShowRawResponse`: Show raw LLM response (default: false)
+- `naturalLanguageCommands.confidenceThresholds`: Object with `autoAccept` and `confirm` values (defaults: 0.9 and 0.7). Controls when commands are auto-executed, require confirmation, or show alternatives:
+	- If confidence ≥ `autoAccept`, the command is auto-executed.
+	- If confidence ≥ `confirm` but < `autoAccept`, you are asked for confirmation.
+	- If confidence < `confirm`, alternatives are shown or the chat sidebar is opened.
+	- Set `autoAccept` to 1 to always ask for confirmation (current behavior). Set to 0 to always auto-accept (advanced users only).
 
 ## Limitations
 - Native top menus cannot be opened (simulated via QuickPick only)

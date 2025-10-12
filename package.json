@@ -123,6 +123,27 @@
           "type": "boolean",
           "default": false,
           "description": "Show the raw LLM response in the UI (for debugging only)."
+        },
+        "naturalLanguageCommands.confidenceThresholds": {
+          "type": "object",
+          "default": { "autoAccept": 0.9, "confirm": 0.7 },
+          "properties": {
+            "autoAccept": {
+              "type": "number",
+              "default": 0.9,
+              "minimum": 0,
+              "maximum": 1,
+              "description": "If LLM confidence is above this value, commands are auto-accepted and executed without confirmation. (0-1, default 0.9)"
+            },
+            "confirm": {
+              "type": "number",
+              "default": 0.7,
+              "minimum": 0,
+              "maximum": 1,
+              "description": "If LLM confidence is between this value and autoAccept, ask for confirmation. Below this, show alternatives. (0-1, default 0.7)"
+            }
+          },
+          "description": "Controls the confidence thresholds for auto-accepting, confirming, or showing alternatives for commands. Set autoAccept to 1 to always ask for confirmation; set to 0 to always auto-accept."
         }
       }
     }

@@ -2,6 +2,11 @@ import * as vscode from 'vscode';
 import { detectProjectType, getTestCommandForProject, getBuildCommandForProject } from './projectTypeUtils';
 
 export class ChatSidebarProvider implements vscode.WebviewViewProvider {
+    private pendingConfirmation: null | {
+        type: 'command' | 'terminal',
+        value: string,
+        replyPrefix: string
+    } = null;
     public static readonly viewType = 'nlcChatView';
     private _view?: vscode.WebviewView;
 
@@ -131,6 +136,41 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
      * Programmatically send a user message to the chat and trigger LLM response as if the user typed it.
      */
     public async sendUserMessageToChat(text: string) {
+    // Do NOT add the user message here; it is now always added in onDidReceiveMessage
+
+        // Check for pending confirmation
+        if (this.pendingConfirmation) {
+            const answer = text.trim().toLowerCase();
+            if (answer === 'yes' || answer === 'y') {
+                if (this.pendingConfirmation.type === 'command') {
+                    // Focus the active text editor before executing the command
+                    const activeEditor = vscode.window.activeTextEditor;
+                    if (activeEditor) {
+                        await vscode.window.showTextDocument(activeEditor.document, activeEditor.viewColumn);
+                    }
+                    await vscode.commands.executeCommand(this.pendingConfirmation.value);
+                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n✅ Confirmed and executed VS Code command: ${this.pendingConfirmation.value}` });
+                } else if (this.pendingConfirmation.type === 'terminal') {
+                    let terminal = vscode.window.activeTerminal;
+                    if (!terminal) {
+                        terminal = vscode.window.createTerminal('NLC Terminal');
+                    }
+                    terminal.show();
+                    terminal.sendText(this.pendingConfirmation.value, true);
+                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n✅ Confirmed and executed terminal command: ${this.pendingConfirmation.value}` });
+                }
+                this.pendingConfirmation = null;
+                return;
+            } else if (answer === 'no' || answer === 'n') {
+                this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n❌ Command cancelled.` });
+                this.pendingConfirmation = null;
+                return;
+            } else {
+                this._sendMessageToWebview('addMessage', { role: 'assistant', content: `Please reply with "yes" or "no" to confirm or cancel the command.` });
+                return;
+            }
+        }
+
         // Special case: trigger sidebar picker for 'show all sidebars' in chat
         if (/^show (all )?sidebars?\??$/i.test(text.trim())) {
             this._sendMessageToWebview('addMessage', { role: 'assistant', content: 'Opening the interactive sidebar picker...' });
@@ -149,16 +189,12 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
             await vscode.commands.executeCommand('nlc.focusChatSidebar');
             // Try again after focusing
             setTimeout(() => {
-                if (this._view) {
-                    this._sendMessageToWebview('addMessage', { role: 'user', content: text });
-                } else {
+                if (!this._view) {
                     vscode.window.showWarningMessage('NLC chat sidebar is not open. Please open the chat sidebar to see responses.');
                 }
             }, 500);
             return;
         }
-        // Add the user message visually
-        this._sendMessageToWebview('addMessage', { role: 'user', content: text });
 
         // Special case: respond to "what can I say" directly in chat
         if (/^what can i say\??$/i.test(text.trim())) {
@@ -182,8 +218,7 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
             return;
         }
 
-
-    // LLM integration: call getLLMResult and display response (duplicate logic from onDidReceiveMessage)
+        // LLM integration: call getLLMResult and display response (duplicate logic from onDidReceiveMessage)
         try {
             const { getLLMResult } = await import('./llm.js');
             const apiKey = process.env.OPENAI_API_KEY;
@@ -228,21 +263,50 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                     this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
                     return;
                 }
-                if ((hasCommand || hasTerminal) && confidence >= 0.9) {
-                    if (hasCommand) {
-                        vscode.commands.executeCommand(llmResult.command!);
-                        reply += `\n✅ Executed VS Code command: ${llmResult.command}`;
-                    } else if (hasTerminal) {
-                        let terminal = vscode.window.activeTerminal;
-                        if (!terminal) {
-                            terminal = vscode.window.createTerminal('NLC Terminal');
+                // Use the same threshold logic as the main command handler
+                const config = vscode.workspace.getConfiguration();
+                const thresholds = config.get<{ autoAccept: number; confirm: number }>('naturalLanguageCommands.confidenceThresholds', { autoAccept: 0.9, confirm: 0.7 });
+                const autoAccept = typeof thresholds.autoAccept === 'number' ? thresholds.autoAccept : 0.9;
+                const confirm = typeof thresholds.confirm === 'number' ? thresholds.confirm : 0.7;
+
+                // DEBUG: Log confidence and thresholds
+                // (DEBUG removed)
+                if ((hasCommand || hasTerminal) && typeof confidence === 'number') {
+                    if (autoAccept < 1 && confidence >= autoAccept) {
+                        // Only auto-execute if autoAccept is less than 1
+                        if (hasCommand) {
+                            vscode.commands.executeCommand(llmResult.command!);
+                            reply += `\n✅ Auto-executed VS Code command: ${llmResult.command}`;
+                        } else if (hasTerminal) {
+                            let terminal = vscode.window.activeTerminal;
+                            if (!terminal) {
+                                terminal = vscode.window.createTerminal('NLC Terminal');
+                            }
+                            terminal.show();
+                            terminal.sendText(llmResult.terminal!, true);
+                            reply += `\n✅ Auto-executed terminal command: ${llmResult.terminal}`;
                         }
-                        terminal.show();
-                        terminal.sendText(llmResult.terminal!, true);
-                        reply += `\n✅ Executed terminal command: ${llmResult.terminal}`;
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
+                    } else if (confidence >= confirm || autoAccept === 1) {
+                        // If autoAccept is 1, always ask for confirmation, never auto-execute
+                        // Ask for confirmation in chat ONLY, do not execute or send summary
+                        let confirmMsg = '';
+                        if (hasCommand) {
+                            confirmMsg = `Do you want to run this command? (yes/no)\nVS Code Command: ${llmResult.command}\nConfidence: ${(confidence * 100).toFixed(1)}%`;
+                            this.pendingConfirmation = { type: 'command', value: llmResult.command!, replyPrefix: reply.trim() };
+                        } else if (hasTerminal) {
+                            confirmMsg = `Do you want to run this terminal command? (yes/no)\nTerminal Command: ${llmResult.terminal}\nConfidence: ${(confidence * 100).toFixed(1)}%`;
+                            this.pendingConfirmation = { type: 'terminal', value: llmResult.terminal!, replyPrefix: reply.trim() };
+                        }
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: confirmMsg });
+                        // Do NOT send the intent/command/percentage reply until confirmation is received
+                        return;
+                    } else {
+                        reply += '\n🤖 I need a bit more detail or clarification before I can run a command. Please rephrase or provide more information.';
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
                     }
-                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
                 } else {
+                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: `[NLC DEBUG] Taking fallback clarification branch.` });
                     reply += '\n🤖 I need a bit more detail or clarification before I can run a command. Please rephrase or provide more information.';
                     this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
                 }
@@ -271,8 +335,27 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         webviewView.webview.onDidReceiveMessage(
             async message => {
+                try {
+                    // If a confirmation is pending, handle it and return (do NOT call LLM)
+                    if (this.pendingConfirmation) {
+                        await this.sendUserMessageToChat(message.text);
+                        return;
+                    }
+                    // Otherwise, proceed with normal LLM flow
+                    await this.sendUserMessageToChat(message.text);
+                } catch (err) {
+                    let msg = 'Unknown error';
+                    if (err && typeof err === 'object' && 'message' in err) {
+                        msg = (err as any).message;
+                    } else if (typeof err === 'string') {
+                        msg = err;
+                    }
+                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: `[NLC ERROR] Exception in onDidReceiveMessage: ${msg}` });
+                    // Also log to console for developer
+                    console.error('[NLC ERROR] Exception in onDidReceiveMessage:', err);
+                }
                 if (message.type === 'userMessage') {
-                    this._sendMessageToWebview('addMessage', { role: 'user', content: message.text });
+                    // Do NOT send the user message to the webview; it is already shown immediately by the frontend.
                     // Special case: trigger sidebar picker for 'show all sidebars' in chat
                     if (/^show (all )?sidebars?\??$/i.test(message.text.trim())) {
                         this._sendMessageToWebview('addMessage', { role: 'assistant', content: 'Opening the interactive sidebar picker...' });
@@ -441,6 +524,8 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
             function sendMessage() {
                 const text = userInput.value.trim();
                 if (!text) return;
+                // Immediately show the user message in the chat for correct order
+                addMessage('user', text);
                 vscode.postMessage({ type: 'userMessage', text });
                 userInput.value = '';
             }

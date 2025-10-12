@@ -597,10 +597,15 @@ export function activate(context: vscode.ExtensionContext) {
 			if (parsed.intent && /notification|alert|status bar/i.test(parsed.intent)) {
 				notificationManager.addNotification(parsed.intent);
 			}
+
 			const confidence = parsed.confidence;
 			const altCommands = parsed.alternatives;
+			// Read confidence thresholds from config
+			const thresholds = config.get<{ autoAccept: number; confirm: number }>('naturalLanguageCommands.confidenceThresholds', { autoAccept: 0.9, confirm: 0.7 });
+			const autoAccept = typeof thresholds.autoAccept === 'number' ? thresholds.autoAccept : 0.9;
+			const confirm = typeof thresholds.confirm === 'number' ? thresholds.confirm : 0.7;
 
-			// If parsed.command is present, execute it directly
+			// If parsed.command is present, handle according to confidence thresholds
 			if (parsed.command && typeof parsed.command === 'string' && parsed.command.trim().length > 0) {
 				let trimmed = parsed.command.trim();
 				// Fix common LLM typo for sidebar toggle command
@@ -615,19 +620,43 @@ export function activate(context: vscode.ExtensionContext) {
 					await vscode.commands.executeCommand('natural-language-commands.listTablesVoiceLauncher');
 					return;
 				}
-				vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
-				const result = await vscode.commands.executeCommand(trimmed);
-				if (result !== undefined) {
-					vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
-				} else {
-					vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}. Redirecting to chat for clarification.`);
-					await vscode.commands.executeCommand('nlc.focusChatSidebar');
-					await chatSidebarProvider.sendUserMessageToChat(userInput);
+				if (autoAccept < 1 && typeof confidence === 'number' && confidence >= autoAccept) {
+					vscode.window.showInformationMessage(`Auto-executing command (confidence ${(confidence * 100).toFixed(1)}% ≥ ${autoAccept * 100}%): ${trimmed}`);
+					const result = await vscode.commands.executeCommand(trimmed);
+					if (result !== undefined) {
+						vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+					} else {
+						vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}. Redirecting to chat for clarification.`);
+						await vscode.commands.executeCommand('nlc.focusChatSidebar');
+						await chatSidebarProvider.sendUserMessageToChat(userInput);
+					}
+					return;
+				} else if (typeof confidence === 'number' && confidence >= confirm) {
+					vscode.window.showInformationMessage(`[NLC DEBUG] Confirmation dialog should appear now for command: ${trimmed} (confidence ${(confidence * 100).toFixed(1)}%)`);
+					const confirmMsg = `Run command \"${trimmed}\"? (confidence ${(confidence * 100).toFixed(1)}%)`;
+					let ok = await vscode.window.showInformationMessage(confirmMsg, { modal: true }, 'Yes');
+					if (ok === undefined) {
+						vscode.window.showWarningMessage('[NLC DEBUG] Modal confirmation dialog did not appear or was dismissed. Trying non-modal prompt.');
+						ok = await vscode.window.showInformationMessage(confirmMsg, 'Yes');
+					}
+					if (ok === 'Yes') {
+						const result = await vscode.commands.executeCommand(trimmed);
+						if (result !== undefined) {
+							vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+						} else {
+							vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}. Redirecting to chat for clarification.`);
+							await vscode.commands.executeCommand('nlc.focusChatSidebar');
+							await chatSidebarProvider.sendUserMessageToChat(userInput);
+						}
+					} else {
+						vscode.window.showInformationMessage('Command cancelled or no confirmation given.');
+					}
+					return;
 				}
-				return;
+				// Otherwise, fall through to alternatives logic below
 			}
 
-			// If parsed.terminal is present, run it in the integrated terminal
+			// If parsed.terminal is present, handle according to confidence thresholds
 			if (parsed.terminal && typeof parsed.terminal === 'string' && parsed.terminal.trim().length > 0) {
 				let terminalCommand = parsed.terminal.trim();
 				// If the user wants to cancel/stop/interrupt a running process, try to send Ctrl+C
@@ -635,61 +664,80 @@ export function activate(context: vscode.ExtensionContext) {
 					await trySendCtrlC();
 					return;
 				}
-
 				// Detect if the user wants to "run tests" or similar
-							const testIntent = /(run( my)? tests?|test( the)?( app| application)?)/i;
-							if (testIntent.test(userInput) || testIntent.test(terminalCommand)) {
-								const { command: testCmd } = await getTestCommandForProject();
-								terminalCommand = testCmd;
-							}
-
+				const testIntent = /(run( my)? tests?|test( the)?( app| application)?)/i;
+				if (testIntent.test(userInput) || testIntent.test(terminalCommand)) {
+					const { command: testCmd } = await getTestCommandForProject();
+					terminalCommand = testCmd;
+				}
 				// Detect build-and-run intent in user input or LLM output
-							const buildRunIntent = /((build|compile)( and)? run|run( and)? build|build then run|build & run|run & build|run application|run the app|build the app|build application|start application|start the app)/i;
-							if (buildRunIntent.test(userInput) || buildRunIntent.test(terminalCommand)) {
-								const type = await detectProjectType();
-								if (type === 'dotnet') {
-									terminalCommand = 'dotnet build && dotnet run';
-								} else if (type === 'node') {
-									terminalCommand = 'npm run build && npm start';
-								}
-							} else if (/^(build|run|test)( the)?( app| application)?$/i.test(terminalCommand)) {
-								const { command: buildCmd } = await getBuildCommandForProject();
-								terminalCommand = buildCmd;
-							}
-
+				const buildRunIntent = /((build|compile)( and)? run|run( and)? build|build then run|build & run|run & build|run application|run the app|build the app|build application|start application|start the app)/i;
+				if (buildRunIntent.test(userInput) || buildRunIntent.test(terminalCommand)) {
+					const type = await detectProjectType();
+					if (type === 'dotnet') {
+						terminalCommand = 'dotnet build && dotnet run';
+					} else if (type === 'node') {
+						terminalCommand = 'npm run build && npm start';
+					}
+				} else if (/^(build|run|test)( the)?( app| application)?$/i.test(terminalCommand)) {
+					const { command: buildCmd } = await getBuildCommandForProject();
+					terminalCommand = buildCmd;
+				}
 				// If the user said "open the terminal and run my tests" or similar, ensure both actions are performed in sequence
-							const openAndTestIntent = /(open( the)? terminal( and)? run( my)? tests?)/i;
-							if (openAndTestIntent.test(userInput)) {
-								await vscode.commands.executeCommand('workbench.action.terminal.toggleTerminal');
-								await new Promise(res => setTimeout(res, 300));
-								const { command: testCmd, language } = await getTestCommandForProject();
-								let detectedMsg = `Detected project type: ${language}`;
-								let terminal = vscode.window.activeTerminal;
-								if (!terminal) {
-									terminal = vscode.window.createTerminal('NLC Terminal');
-								}
-								terminal.show();
-								terminal.sendText(testCmd, true);
-								const infoMsg = `${detectedMsg}\nOpened terminal and ran: ${testCmd}`;
-								vscode.window.showInformationMessage(infoMsg);
-								if (chatSidebarProvider && typeof chatSidebarProvider.sendUserMessageToChat === 'function') {
-									chatSidebarProvider.sendUserMessageToChat(infoMsg);
-								}
-								return;
-							}
-
+				const openAndTestIntent = /(open( the)? terminal( and)? run( my)? tests?)/i;
+				if (openAndTestIntent.test(userInput)) {
+					await vscode.commands.executeCommand('workbench.action.terminal.toggleTerminal');
+					await new Promise(res => setTimeout(res, 300));
+					const { command: testCmd, language } = await getTestCommandForProject();
+					let detectedMsg = `Detected project type: ${language}`;
+					let terminal = vscode.window.activeTerminal;
+					if (!terminal) {
+						terminal = vscode.window.createTerminal('NLC Terminal');
+					}
+					terminal.show();
+					terminal.sendText(testCmd, true);
+					const infoMsg = `${detectedMsg}\nOpened terminal and ran: ${testCmd}`;
+					vscode.window.showInformationMessage(infoMsg);
+					if (chatSidebarProvider && typeof chatSidebarProvider.sendUserMessageToChat === 'function') {
+						chatSidebarProvider.sendUserMessageToChat(infoMsg);
+					}
+					return;
+				}
 				// Translate if running in PowerShell
 				if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
 					terminalCommand = translateToPowerShell(terminalCommand);
 				}
-				let terminal = vscode.window.activeTerminal;
-				if (!terminal) {
-					terminal = vscode.window.createTerminal('NLC Terminal');
+				if (autoAccept < 1 && typeof confidence === 'number' && confidence >= autoAccept) {
+					let terminal = vscode.window.activeTerminal;
+					if (!terminal) {
+						terminal = vscode.window.createTerminal('NLC Terminal');
+					}
+					terminal.show();
+					terminal.sendText(terminalCommand, true);
+					vscode.window.showInformationMessage(`Auto-executing terminal command (confidence ${(confidence * 100).toFixed(1)}% ≥ ${autoAccept * 100}%): ${terminalCommand}`);
+					return;
+				} else if (typeof confidence === 'number' && confidence >= confirm) {
+					vscode.window.showInformationMessage(`[NLC DEBUG] Confirmation dialog should appear now for terminal command: ${terminalCommand} (confidence ${(confidence * 100).toFixed(1)}%)`);
+					const confirmMsg = `Run terminal command \"${terminalCommand}\"? (confidence ${(confidence * 100).toFixed(1)}%)`;
+					let ok = await vscode.window.showInformationMessage(confirmMsg, { modal: true }, 'Yes');
+					if (ok === undefined) {
+						vscode.window.showWarningMessage('[NLC DEBUG] Modal confirmation dialog did not appear or was dismissed. Trying non-modal prompt.');
+						ok = await vscode.window.showInformationMessage(confirmMsg, 'Yes');
+					}
+					if (ok === 'Yes') {
+						let terminal = vscode.window.activeTerminal;
+						if (!terminal) {
+							terminal = vscode.window.createTerminal('NLC Terminal');
+						}
+						terminal.show();
+						terminal.sendText(terminalCommand, true);
+						vscode.window.showInformationMessage(`Terminal command executed: ${terminalCommand}`);
+					} else {
+						vscode.window.showInformationMessage('Terminal command cancelled or no confirmation given.');
+					}
+					return;
 				}
-				terminal.show();
-				terminal.sendText(terminalCommand, true);
-				vscode.window.showInformationMessage(`Running in terminal: ${terminalCommand}`);
-				return;
+				// Otherwise, fall through to alternatives logic below
 			}
 
 			// Check alternatives for VoiceLauncher SQL workflow intent and terminal commands
@@ -810,7 +858,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// If we reach here, the command was not recognized with high confidence.
 			// If confidence is low or no actionable command, open the sidebar chat for clarification and send the user input to chat.
-			if (typeof confidence === 'number' && confidence < 0.7) {
+			if (typeof confidence === 'number' && confidence < confirm) {
 				vscode.window.showWarningMessage('Could not confidently identify your command. Opening the chat sidebar for clarification.');
 				await vscode.commands.executeCommand('nlc.focusChatSidebar');
 				// Send the user input to the chat sidebar for LLM response
