@@ -1,1 +1,0 @@
-Can we give some thought as to how the user will input their OpenAI API key for use in the system? Ideally, they should just have it as an environmental variable, but we also need to give them the ability to type it in somewhere so we can store it securely. This needs to be documented in the README so they know how to do it.
