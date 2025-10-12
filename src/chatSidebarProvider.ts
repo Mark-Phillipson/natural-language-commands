@@ -4,21 +4,164 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'nlcChatView';
     private _view?: vscode.WebviewView;
 
-
     constructor(private readonly _extensionUri: vscode.Uri) {}
 
+    // Shared menu simulation definitions
+    private static readonly menuSimulations: { [key: string]: { label: string, command: string }[] } = {
+            'edit': [
+                { label: 'Undo', command: 'undo' },
+                { label: 'Redo', command: 'redo' },
+                { label: 'Cut', command: 'editor.action.clipboardCutAction' },
+                { label: 'Copy', command: 'editor.action.clipboardCopyAction' },
+                { label: 'Paste', command: 'editor.action.clipboardPasteAction' },
+                { label: 'Find', command: 'actions.find' },
+                { label: 'Replace', command: 'editor.action.startFindReplaceAction' },
+                { label: 'Select All', command: 'editor.action.selectAll' },
+            ],
+            'selection': [
+                { label: 'Select All', command: 'editor.action.selectAll' },
+                { label: 'Expand Selection', command: 'editor.action.smartSelect.expand' },
+                { label: 'Shrink Selection', command: 'editor.action.smartSelect.shrink' },
+                { label: 'Copy Line Up', command: 'editor.action.copyLinesUpAction' },
+                { label: 'Copy Line Down', command: 'editor.action.copyLinesDownAction' },
+                { label: 'Move Line Up', command: 'editor.action.moveLinesUpAction' },
+                { label: 'Move Line Down', command: 'editor.action.moveLinesDownAction' },
+            ],
+            'view': [
+                { label: 'Command Palette', command: 'workbench.action.showCommands' },
+                { label: 'Explorer', command: 'workbench.view.explorer' },
+                { label: 'Search', command: 'workbench.view.search' },
+                { label: 'Source Control', command: 'workbench.view.scm' },
+                { label: 'Run & Debug', command: 'workbench.view.debug' },
+                { label: 'Extensions', command: 'workbench.view.extensions' },
+                { label: 'Problems', command: 'workbench.actions.view.problems' },
+                { label: 'Output', command: 'workbench.action.output.toggleOutput' },
+                { label: 'Terminal', command: 'workbench.action.terminal.toggleTerminal' },
+            ],
+            'go': [
+                { label: 'Go to File...', command: 'workbench.action.quickOpen' },
+                { label: 'Go to Symbol...', command: 'workbench.action.gotoSymbol' },
+                { label: 'Go to Line...', command: 'workbench.action.gotoLine' },
+                { label: 'Go Back', command: 'workbench.action.navigateBack' },
+                { label: 'Go Forward', command: 'workbench.action.navigateForward' },
+                { label: 'Go to Next Problem', command: 'editor.action.marker.next' },
+                { label: 'Go to Previous Problem', command: 'editor.action.marker.prev' },
+            ],
+            'run': [
+                { label: 'Start Debugging', command: 'workbench.action.debug.start' },
+                { label: 'Run Without Debugging', command: 'workbench.action.debug.run' },
+                { label: 'Stop Debugging', command: 'workbench.action.debug.stop' },
+                { label: 'Restart Debugging', command: 'workbench.action.debug.restart' },
+                { label: 'Run Task...', command: 'workbench.action.tasks.runTask' },
+            ],
+            'terminal': [
+                { label: 'New Terminal', command: 'workbench.action.terminal.new' },
+                { label: 'Split Terminal', command: 'workbench.action.terminal.split' },
+                { label: 'Kill Terminal', command: 'workbench.action.terminal.kill' },
+                { label: 'Run Task...', command: 'workbench.action.tasks.runTask' },
+                { label: 'Configure Tasks...', command: 'workbench.action.tasks.configureTaskRunner' },
+                { label: 'Show Terminal', command: 'workbench.action.terminal.toggleTerminal' },
+                { label: 'Focus Next Terminal', command: 'workbench.action.terminal.focusNext' },
+                { label: 'Focus Previous Terminal', command: 'workbench.action.terminal.focusPrevious' },
+            ],
+            'help': [
+                { label: 'Welcome', command: 'workbench.action.showWelcomePage' },
+                { label: 'Documentation', command: 'workbench.action.openDocumentationUrl' },
+                { label: 'Release Notes', command: 'update.showCurrentReleaseNotes' },
+                { label: 'Keyboard Shortcuts Reference', command: 'workbench.action.openGlobalKeybindings' },
+                { label: 'Report Issue', command: 'workbench.action.openIssueReporter' },
+                { label: 'About', command: 'workbench.action.showAboutDialog' },
+            ],
+        };
+
+    /**
+     * Shared robust menu matcher and simulator. Returns true if a menu was matched and simulated.
+     */
+    private trySimulateMenu(text: string): boolean {
+        const menuSimulations = ChatSidebarProvider.menuSimulations;
+        let normText = text.trim().toLowerCase().replace(/\s+/g, ' ');
+        const menuNames = Object.keys(menuSimulations);
+        for (const menu of menuNames) {
+            // Regex: optional polite/filler, optional open/show, optional the, <menu> menu, optional polite/filler at end
+            const menuRegex = new RegExp(`(?:please |openly |kindly |can you |could you |would you |just |hey |hi |hello )*` +
+                `(?:open |show |display |launch )*` +
+                `(?:the )*` +
+                `${menu} menu` +
+                `(?: please| now| for me|)?`, 'i');
+            if (menuRegex.test(normText)) {
+                const actions = menuSimulations[menu];
+                this._sendMessageToWebview('addMessage', { role: 'assistant', content: `Simulating the ${menu.charAt(0).toUpperCase() + menu.slice(1)} menu. Please select an action from the menu above.` });
+                vscode.window.showQuickPick(actions, { placeHolder: `Select a ${menu} action to run:`, canPickMany: false }).then(pick => {
+                    if (pick && pick.command) {
+                        vscode.commands.executeCommand(pick.command);
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: `✅ Ran ${menu.charAt(0).toUpperCase() + menu.slice(1)} menu action: ${pick.label}` });
+                    } else {
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: `No ${menu.charAt(0).toUpperCase() + menu.slice(1)} menu action selected.` });
+                    }
+                });
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Programmatically send a user message to the chat and trigger LLM response as if the user typed it.
      */
     public async sendUserMessageToChat(text: string) {
+        // Special case: trigger new command interface for 'show all sidebars' in chat
+        if (/^show (all )?sidebars?\??$/i.test(text.trim())) {
+            this._sendMessageToWebview('addMessage', { role: 'assistant', content: 'Opening the interactive sidebar picker...' });
+            vscode.commands.executeCommand('natural-language-commands.new');
+            return;
+        }
+
+        // Shared robust menu simulation
+        if (this.trySimulateMenu(text)) {
+            return;
+        }
+
         if (!this._view) {
-            // If the view is not yet resolved, do nothing (should be resolved before calling this)
+            // If the view is not yet resolved, log a warning and try to focus the chat sidebar
+            console.warn('[NLC] ChatSidebarProvider: _view is not resolved. Attempting to focus chat sidebar.');
+            await vscode.commands.executeCommand('nlc.focusChatSidebar');
+            // Try again after focusing
+            setTimeout(() => {
+                if (this._view) {
+                    this._sendMessageToWebview('addMessage', { role: 'user', content: text });
+                } else {
+                    vscode.window.showWarningMessage('NLC chat sidebar is not open. Please open the chat sidebar to see responses.');
+                }
+            }, 500);
             return;
         }
         // Add the user message visually
         this._sendMessageToWebview('addMessage', { role: 'user', content: text });
-        // LLM integration: call getLLMResult and display response (duplicate logic from onDidReceiveMessage)
+
+        // Special case: respond to "what can I say" directly in chat
+        if (/^what can i say\??$/i.test(text.trim())) {
+            const exampleList = [
+                'Show all sidebars',
+                'Open the terminal and run my tests',
+                'Show command history sidebar',
+                'Find all TODO comments in the workspace',
+                'Create a new file called notes.md',
+                'Go to line 42',
+                'Show me the problems panel',
+                'Run the build task',
+                'Search for "function" in the workspace',
+            ];
+            const message =
+                `You can ask me to do almost anything you can do in VS Code!\n\n` +
+                `Here are some examples:\n` +
+                exampleList.map(e => `• ${e}`).join('\n') +
+                `\n\n...and much more! There are too many possibilities to list them all. Just try describing what you want to do in your own words.`;
+            this._sendMessageToWebview('addMessage', { role: 'assistant', content: message });
+            return;
+        }
+
+
+    // LLM integration: call getLLMResult and display response (duplicate logic from onDidReceiveMessage)
         try {
             const { getLLMResult } = await import('./llm.js');
             const apiKey = process.env.OPENAI_API_KEY;
@@ -91,6 +234,36 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
             async message => {
                 if (message.type === 'userMessage') {
                     this._sendMessageToWebview('addMessage', { role: 'user', content: message.text });
+                    // Special case: trigger new command interface for 'show all sidebars' in chat
+                    if (/^show (all )?sidebars?\??$/i.test(message.text.trim())) {
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: 'Opening the interactive sidebar picker...' });
+                        vscode.commands.executeCommand('natural-language-commands.new');
+                        return;
+                    }
+                    if (/^what can i say\??$/i.test(message.text.trim())) {
+                        const exampleList = [
+                            'Show all sidebars',
+                            'Open the terminal and run my tests',
+                            'Show command history sidebar',
+                            'Find all TODO comments in the workspace',
+                            'Create a new file called notes.md',
+                            'Go to line 42',
+                            'Show me the problems panel',
+                            'Run the build task',
+                            'Search for "function" in the workspace',
+                        ];
+                        const messageText =
+                            `You can ask me to do almost anything you can do in VS Code!\n\n` +
+                            `Here are some examples:\n` +
+                            exampleList.map(e => `• ${e}`).join('\n') +
+                            `\n\n...and much more! There are too many possibilities to list them all. Just try describing what you want to do in your own words.`;
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: messageText });
+                        return;
+                    }
+                    // Shared robust menu simulation
+                    if (this.trySimulateMenu(message.text)) {
+                        return;
+                    }
                     // LLM integration: call getLLMResult and display response
                     try {
                         // Dynamically import getLLMResult to avoid circular deps

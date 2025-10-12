@@ -1,1 +1,3 @@
-When we enter a new command and it is not possible to identify it with the specific percentage of accuracy, we should automatically load up  the webview sidebar chat so the user can have a conversation about their command with a large language model and not just simply log a message in the notifications.
+Okay we have a bit of a problem here so the first example is open the file menu so obviously a user would try that and it fails so first of all we don't need that in the list and we need a workaround for the menu requests in chat similar to the way we have in new command interface
+
+ so maybe it could stay in the list if it works.

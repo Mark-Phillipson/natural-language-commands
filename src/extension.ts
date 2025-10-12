@@ -478,6 +478,54 @@ export function activate(context: vscode.ExtensionContext) {
 			return text.replace(/^\s*please\s*[,:]?\s*/i, '');
 		}
 		const trimmedInput = stripPleasePrefix(userInput.trim());
+		// Special case: respond to "what can I say" directly in chat
+		if (/^what can i say\??$/i.test(trimmedInput)) {
+			await vscode.commands.executeCommand('nlc.focusChatSidebar');
+			const exampleList = [
+				'Open the file menu',
+				'Show all sidebars',
+				'Open the terminal and run my tests',
+				'Show command history sidebar',
+				'Find all TODO comments in the workspace',
+				'Create a new file called notes.md',
+				'Go to line 42',
+				'Show me the problems panel',
+				'Run the build task',
+				'Search for "function" in the workspace',
+			];
+			const message =
+				`You can ask me to do almost anything you can do in VS Code!\n\n` +
+				`Here are some examples:\n` +
+				exampleList.map(e => `• ${e}`).join('\n') +
+				`\n\n...and much more! There are too many possibilities to list them all. Just try describing what you want to do in your own words.`;
+			await chatSidebarProvider.sendUserMessageToChat(trimmedInput); // Show user message
+			await chatSidebarProvider.sendUserMessageToChat(message); // Show assistant response
+			return;
+		}
+		// Special case: respond to "what can I say" directly in chat
+		if (/^what can i say\??$/i.test(trimmedInput)) {
+			await vscode.commands.executeCommand('nlc.focusChatSidebar');
+			const exampleList = [
+				'Open the file menu',
+				'Show all sidebars',
+				'Open the terminal and run my tests',
+				'Show command history sidebar',
+				'Find all TODO comments in the workspace',
+				'Create a new file called notes.md',
+				'Go to line 42',
+				'Show me the problems panel',
+				'Run the build task',
+				'Search for "function" in the workspace',
+			];
+			const message =
+				`You can ask me to do almost anything you can do in VS Code!\n\n` +
+				`Here are some examples:\n` +
+				exampleList.map(e => `• ${e}`).join('\n') +
+				`\n\n...and much more! There are too many possibilities to list them all. Just try describing what you want to do in your own words.`;
+			await chatSidebarProvider.sendUserMessageToChat(trimmedInput); // Show user message
+			await chatSidebarProvider.sendUserMessageToChat(message); // Show assistant response
+			return;
+		}
 		// Only add to history if not already the most recent entry
 		if (history.length === 0 || history[0] !== trimmedInput) {
 			history = [trimmedInput, ...history.filter(cmd => cmd !== trimmedInput)].slice(0, HISTORY_LIMIT);
@@ -745,12 +793,17 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(disposable);
 
 	// Register the new command for direct input (no history QuickPick)
-	const newDisposable = vscode.commands.registerCommand('natural-language-commands.new', async () => {
+	const newDisposable = vscode.commands.registerCommand('natural-language-commands.new', async (arg?: any) => {
 		let history: string[] = context.globalState.get<string[]>(HISTORY_KEY) || [];
-		const userInput = await vscode.window.showInputBox({
-			prompt: 'Enter a command in natural language (e.g., "Open the terminal and run my tests")',
-			placeHolder: 'Describe what you want to do...'
-		});
+		let userInput: string | undefined;
+		if (typeof arg === 'string' && arg.trim().length > 0) {
+			userInput = arg.trim();
+		} else {
+			userInput = await vscode.window.showInputBox({
+				prompt: 'Enter a command in natural language (e.g., "Open the terminal and run my tests")',
+				placeHolder: 'Describe what you want to do...'
+			});
+		}
 		if (!userInput || userInput.trim().length === 0) {
 			vscode.window.showInformationMessage('No command entered.');
 			return;
