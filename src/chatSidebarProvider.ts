@@ -18,10 +18,84 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
         };
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         webviewView.webview.onDidReceiveMessage(
-            message => {
+            async message => {
                 if (message.type === 'userMessage') {
                     this._sendMessageToWebview('addMessage', { role: 'user', content: message.text });
-                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: 'Echo: ' + message.text });
+                    // LLM integration: call getLLMResult and display response
+                    try {
+                        // Dynamically import getLLMResult to avoid circular deps
+                        const { getLLMResult } = await import('./llm.js');
+                        // Get API key from env (same as extension.ts)
+                        const apiKey = process.env.OPENAI_API_KEY;
+                        if (!apiKey) {
+                            this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ OpenAI API key not found. Please set OPENAI_API_KEY in your .env file.' });
+                            return;
+                        }
+                        // Use default model (gpt-4o)
+                        const model = 'gpt-4o';
+                        const llmResult = await getLLMResult(apiKey, message.text, model);
+                        if (llmResult.error) {
+                            this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ LLM error: ' + llmResult.error });
+                        } else {
+                            // Show the LLM's intent/clarification as the assistant message
+                            let reply = '';
+                            if (llmResult.intent) {
+                                reply += `Intent: ${llmResult.intent}\n`;
+                            }
+                            if (llmResult.command) {
+                                reply += `VS Code Command: ${llmResult.command}\n`;
+                            }
+                            if (llmResult.terminal) {
+                                reply += `Terminal Command: ${llmResult.terminal}\n`;
+                            }
+                            if (llmResult.search) {
+                                reply += `Search: ${llmResult.search}\n`;
+                            }
+                            if (llmResult.confidence !== undefined) {
+                                reply += `Confidence: ${Math.round(llmResult.confidence * 100)}%\n`;
+                            }
+                            if (llmResult.alternatives && llmResult.alternatives.length > 0) {
+                                reply += `Alternatives:\n`;
+                                llmResult.alternatives.forEach((alt: any, i: number) => {
+                                    reply += `  - ${alt.command || alt.terminal || 'N/A'}: ${alt.description || ''}\n`;
+                                });
+                            }
+                            // Decision logic: execute if confidence >= 90% and command/terminal present
+                            const confidence = llmResult.confidence || 0;
+                            const hasCommand = !!llmResult.command;
+                            const hasTerminal = !!llmResult.terminal;
+                            if ((hasCommand || hasTerminal) && confidence >= 0.9) {
+                                // Execute the command or terminal
+                                if (hasCommand) {
+                                    // VS Code command
+                                    vscode.commands.executeCommand(llmResult.command!);
+                                    reply += `\n✅ Executed VS Code command: ${llmResult.command}`;
+                                } else if (hasTerminal) {
+                                    // Terminal command
+                                    let terminal = vscode.window.activeTerminal;
+                                    if (!terminal) {
+                                        terminal = vscode.window.createTerminal('NLC Terminal');
+                                    }
+                                    terminal.show();
+                                    terminal.sendText(llmResult.terminal!, true);
+                                    reply += `\n✅ Executed terminal command: ${llmResult.terminal}`;
+                                }
+                                this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
+                            } else {
+                                // Ask for clarification
+                                reply += '\n🤖 I need a bit more detail or clarification before I can run a command. Please rephrase or provide more information.';
+                                this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
+                            }
+                        }
+                    } catch (err) {
+                        let msg = 'Unknown error';
+                        if (err && typeof err === 'object' && 'message' in err) {
+                            msg = (err as any).message;
+                        } else if (typeof err === 'string') {
+                            msg = err;
+                        }
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ Error calling LLM: ' + msg });
+                    }
                 }
             }
         );
