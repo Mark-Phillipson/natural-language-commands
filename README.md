@@ -1,5 +1,6 @@
 
-## Accessibility & Productivity
+
+## ♿️ Accessibility & 🚀 Productivity
 
 This extension is designed to make VS Code more accessible and productive for everyone:
 
@@ -8,26 +9,26 @@ This extension is designed to make VS Code more accessible and productive for ev
 - **Discoverability:** The extension’s command history makes it easy to recall and reuse previous actions, further reducing cognitive load.
 
 
-# Natural Language Commands for VS Code
+# 🤖 Natural Language Commands for VS Code
 
 Created by Mark Phillipson
 
 This extension lets you run VS Code commands using natural language. It integrates with OpenAI models (default: gpt-4o) to interpret your requests and map them to editor actions, simulated menus, and terminal commands.
 
-## Features
-- Run VS Code or terminal commands using plain English
-- Simulated menus for File, Edit, Selection, View, Go, Run, Terminal, and Help (via QuickPick)
-- Sidebar and activity bar navigation (including custom sidebars)
-- Command history sidebar
-- Choose your preferred OpenAI model
-- Debug mode to show raw LLM responses
-- Status bar alert icon for notifications
-- PowerShell translation for terminal commands
-- Confirmation and alternatives for low-confidence actions
+## ✨ Features
+- 🗣️ Run VS Code or terminal commands using plain English
+- 🗂️ Simulated menus for File, Edit, Selection, View, Go, Run, Terminal, and Help (via QuickPick)
+- 🧭 Sidebar and activity bar navigation (including custom sidebars)
+- 🕑 Command history sidebar
+- 🤖 Choose your preferred OpenAI model
+- 🐞 Debug mode to show raw LLM responses
+- 🔔 Status bar alert icon for notifications
+- 💻 PowerShell translation for terminal commands
+- ⚠️ Confirmation and alternatives for low-confidence actions
 
-## Usage
+## 📝 Usage
 
-### Example Natural Language Commands
+### 💡 Example Natural Language Commands
 - "Open the file menu"
 - "Show the edit menu"
 - "Show all sidebars"
@@ -45,16 +46,16 @@ This extension lets you run VS Code commands using natural language. It integrat
 - "Open the debug console"
 - "Clear the command history"
 
-### Simulated Menus
+### 🗂️ Simulated Menus
 Native top menus (File, Edit, Selection, View, Go, Run, Terminal, Help) cannot be opened directly. Instead, this extension provides simulated menus via QuickPick with common actions for each menu. Just say or type e.g. "open the file menu" or "show the edit menu".
 
-### Sidebar Navigation
+### 🧭 Sidebar Navigation
 Say "show all sidebars" to get a filterable list of all sidebars (Explorer, Source Control, Run & Debug, Extensions, etc.) and focus the one you select.
 
-### Command History
+### 🕑 Command History
 The extension keeps a session-based and persistent command history, accessible via the custom sidebar.
 
-## Extension Commands
+## 🛠️ Extension Commands
 
 | Command ID                                      | Title / Description                       |
 |-------------------------------------------------|-------------------------------------------|
@@ -76,7 +77,7 @@ The extension keeps a session-based and persistent command history, accessible v
 | commandHistory.reRunCommand                     | Re-run from History                       |
 | commandHistory.deleteItem                       | Delete from History                       |
 
-## Extension Settings
+## ⚙️ Extension Settings
 - `naturalLanguageCommands.model`: OpenAI model to use (default: gpt-4o)
 - `naturalLanguageCommands.debugShowRawResponse`: Show raw LLM response (default: false)
 - `naturalLanguageCommands.confidenceThresholds`: Object with `autoAccept` and `confirm` values (defaults: 0.9 and 0.7). Controls when commands are auto-executed, require confirmation, or show alternatives:
@@ -86,41 +87,41 @@ The extension keeps a session-based and persistent command history, accessible v
 	- Set `autoAccept` to 1 to always ask for confirmation (current behavior). Set to 0 to always auto-accept (advanced users only).
 
 
-## Providing Your OpenAI API Key
+## 🗝️ Providing Your OpenAI API Key
 
 This extension requires a valid OpenAI API key to function. You can provide your key in one of two ways:
 
-### 1. Securely via the Command Palette (Recommended)
+### 1️⃣ Securely via the Command Palette (Recommended)
 
-- Run the command **"Set OpenAI API Key"** from the Command Palette (`Ctrl+Shift+P` > type "Set OpenAI API Key").
-- Enter your OpenAI API key (it will be stored securely using VS Code's SecretStorage and never synced or exposed).
-- To remove your key, run **"Remove OpenAI API Key"** from the Command Palette.
+- 🔐 Run the command **"Set OpenAI API Key"** from the Command Palette (`Ctrl+Shift+P` > type "Set OpenAI API Key").
+- 🗝️ Enter your OpenAI API key (it will be stored securely using VS Code's SecretStorage and never synced or exposed).
+- ❌ To remove your key, run **"Remove OpenAI API Key"** from the Command Palette.
 
-### 2. Using an Environment Variable
+### 2️⃣ Using an Environment Variable
 
-- Create a file named `.env` in the extension root folder (or your workspace root).
-- Add the following line:
+- 📝 Create a file named `.env` in the extension root folder (or your workspace root).
+- ➕ Add the following line:
 	```
 	OPENAI_API_KEY=sk-...
 	```
-- Restart VS Code after editing the `.env` file.
+- 🔄 Restart VS Code after editing the `.env` file.
 
-If both are set, the extension will use the key from secure storage first.
+🔎 If both are set, the extension will use the key from secure storage first.
 
-If the key is missing, you will be prompted to set it using the command above.
+❓ If the key is missing, you will be prompted to set it using the command above.
 
-## Limitations
-- Native top menus cannot be opened (simulated via QuickPick only)
-- Requires valid OpenAI API key (see above)
+## ⚠️ Limitations
+- 🚫 Native top menus cannot be opened (simulated via QuickPick only)
+- 🗝️ Requires valid OpenAI API key (see above)
 
-## Voice Control
+## 🗣️ Voice Control
 This extension can be used in conjunction with [Talon Voice](https://talonvoice.com/) to further enhance your workflow with hands-free, voice-driven commands in VS Code.
 
-## Release Notes
+## 📝 Release Notes
 ### 1.0.0
 Initial release with core features and simulated menus.
 
-## For more information
+## ℹ️ For more information
 
 - [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
 - [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
