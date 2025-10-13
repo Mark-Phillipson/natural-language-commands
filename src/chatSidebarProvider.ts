@@ -147,16 +147,34 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                     if (activeEditor) {
                         await vscode.window.showTextDocument(activeEditor.document, activeEditor.viewColumn);
                     }
-                    await vscode.commands.executeCommand(this.pendingConfirmation.value);
-                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n✅ Confirmed and executed VS Code command: ${this.pendingConfirmation.value}` });
+                    if (this.pendingConfirmation.value && typeof this.pendingConfirmation.value === 'string') {
+                        try {
+                            await vscode.commands.executeCommand(this.pendingConfirmation.value);
+                            this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n✅ Confirmed and executed VS Code command: ${this.pendingConfirmation.value}` });
+                        } catch (err) {
+                            let msg = 'Unknown error';
+                            if (err && typeof err === 'object' && 'message' in err) {
+                                msg = (err as any).message;
+                            } else if (typeof err === 'string') {
+                                msg = err;
+                            }
+                            this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n❌ Failed to execute VS Code command: ${this.pendingConfirmation.value}\nError: ${msg}` });
+                        }
+                    } else {
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n❌ No command to execute.` });
+                    }
                 } else if (this.pendingConfirmation.type === 'terminal') {
                     let terminal = vscode.window.activeTerminal;
                     if (!terminal) {
                         terminal = vscode.window.createTerminal('NLC Terminal');
                     }
                     terminal.show();
-                    terminal.sendText(this.pendingConfirmation.value, true);
-                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n✅ Confirmed and executed terminal command: ${this.pendingConfirmation.value}` });
+                    if (this.pendingConfirmation.value && typeof this.pendingConfirmation.value === 'string') {
+                        terminal.sendText(this.pendingConfirmation.value, true);
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n✅ Confirmed and executed terminal command: ${this.pendingConfirmation.value}` });
+                    } else {
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n❌ No terminal command to execute.` });
+                    }
                 }
                 this.pendingConfirmation = null;
                 return;
@@ -286,9 +304,33 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                     if (autoAccept < 1 && confidence >= autoAccept) {
                         // Only auto-execute if autoAccept is less than 1
                         if (hasCommand) {
-                            vscode.commands.executeCommand(llmResult.command!);
-                            reply += `\n✅ Auto-executed VS Code command: ${llmResult.command}`;
-                        } else if (hasTerminal) {
+                            try {
+                                if (llmResult.command && llmResult.command.startsWith('editor.')) {
+                                    const activeEditor = vscode.window.activeTextEditor;
+                                    if (!activeEditor) {
+                                        vscode.window.showErrorMessage('NLC: No active text editor. Cannot execute command: ' + llmResult.command);
+                                        reply += `\n❌ No active text editor. Cannot execute command: ${llmResult.command}`;
+                                    } else {
+                                        vscode.window.showInformationMessage('NLC: Focusing active editor before executing command: ' + llmResult.command);
+                                        await vscode.window.showTextDocument(activeEditor.document, activeEditor.viewColumn);
+                                        vscode.window.showInformationMessage('NLC: About to execute VS Code command: ' + llmResult.command);
+                                        await vscode.commands.executeCommand(llmResult.command!);
+                                        vscode.window.showInformationMessage('NLC: Successfully executed VS Code command: ' + llmResult.command);
+                                        reply += `\n✅ Auto-executed VS Code command: ${llmResult.command}`;
+                                    }
+                                } else {
+                                    vscode.window.showInformationMessage('NLC: About to execute VS Code command: ' + llmResult.command);
+                                    await vscode.commands.executeCommand(llmResult.command!);
+                                    vscode.window.showInformationMessage('NLC: Successfully executed VS Code command: ' + llmResult.command);
+                                    reply += `\n✅ Auto-executed VS Code command: ${llmResult.command}`;
+                                }
+                            } catch (err) {
+                                const errMsg = err && typeof err === 'object' && 'message' in err ? (err as any).message : String(err);
+                                vscode.window.showErrorMessage('NLC: Failed to execute VS Code command: ' + llmResult.command + ' - ' + errMsg);
+                                reply += `\n❌ Failed to execute VS Code command: ${llmResult.command}`;
+                            }
+                        }
+                        if (hasTerminal) {
                             let terminal = vscode.window.activeTerminal;
                             if (!terminal) {
                                 terminal = vscode.window.createTerminal('NLC Terminal');
@@ -317,7 +359,6 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                         this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
                     }
                 } else {
-                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: `[NLC DEBUG] Taking fallback clarification branch.` });
                     reply += '\n🤖 I need a bit more detail or clarification before I can run a command. Please rephrase or provide more information.';
                     this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
                 }
@@ -346,13 +387,23 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         webviewView.webview.onDidReceiveMessage(
             async message => {
-                try {
-                    // If a confirmation is pending, handle it and return (do NOT call LLM)
-                    if (this.pendingConfirmation) {
+                // If a confirmation is pending, handle it and return (do NOT call LLM or any further logic)
+                if (this.pendingConfirmation) {
+                    try {
                         await this.sendUserMessageToChat(message.text);
-                        return;
+                    } catch (err) {
+                        let msg = 'Unknown error';
+                        if (err && typeof err === 'object' && 'message' in err) {
+                            msg = (err as any).message;
+                        } else if (typeof err === 'string') {
+                            msg = err;
+                        }
+                        console.error('[NLC ERROR] Exception in confirmation branch:', err);
                     }
-                    // Otherwise, proceed with normal LLM flow
+                    return;
+                }
+                // Otherwise, proceed with normal LLM flow
+                try {
                     await this.sendUserMessageToChat(message.text);
                 } catch (err) {
                     let msg = 'Unknown error';
@@ -362,121 +413,6 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                         msg = err;
                     }
                     console.error('[NLC ERROR] Exception in onDidReceiveMessage:', err);
-                }
-                if (message.type === 'userMessage') {
-                    // Do NOT send the user message to the webview; it is already shown immediately by the frontend.
-                    // Special case: trigger sidebar picker for 'show all sidebars' in chat
-                    if (/^show (all )?sidebars?\??$/i.test(message.text.trim())) {
-                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: 'Opening the interactive sidebar picker...' });
-                        vscode.commands.executeCommand('nlc.showSidebars');
-                        return;
-                    }
-                    if (/^what can i say\??$/i.test(message.text.trim())) {
-                        const exampleList = [
-                            'Show all sidebars',
-                            'Open the terminal and run my tests',
-                            'Show command history sidebar',
-                            'Find all TODO comments in the workspace',
-                            'Create a new file called notes.md',
-                            'Go to line 42',
-                            'Show me the problems panel',
-                            'Run the build task',
-                            'Search for "function" in the workspace',
-                        ];
-                        const messageText =
-                            `You can ask me to do almost anything you can do in VS Code!\n\n` +
-                            `Here are some examples:\n` +
-                            exampleList.map(e => `• ${e}`).join('\n') +
-                            `\n\n...and much more! There are too many possibilities to list them all. Just try describing what you want to do in your own words.`;
-                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: messageText });
-                        return;
-                    }
-                    // Shared robust menu simulation
-                    if (this.trySimulateMenu(message.text)) {
-                        return;
-                    }
-                    // LLM integration: call getLLMResult and display response
-                    try {
-                        const { getLLMResult } = await import('./llm.js');
-                        const apiKey = process.env.OPENAI_API_KEY;
-                        if (!apiKey) {
-                            this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ OpenAI API key not found. Please set OPENAI_API_KEY in your .env file.' });
-                            return;
-                        }
-                        const model = 'gpt-4o';
-                        const llmResult = await getLLMResult(apiKey, message.text, model);
-                        if (llmResult.error) {
-                            this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ LLM error: ' + llmResult.error });
-                        } else {
-                            let reply = '';
-                            if (llmResult.intent) {
-                                reply += `Intent: ${llmResult.intent}\n`;
-                            }
-                            if (llmResult.command) {
-                                reply += `VS Code Command: ${llmResult.command}\n`;
-                            }
-                            if (llmResult.terminal) {
-                                reply += `Terminal Command: ${llmResult.terminal}\n`;
-                            }
-                            if (llmResult.search) {
-                                reply += `Search: ${llmResult.search}\n`;
-                            }
-                            if (llmResult.confidence !== undefined) {
-                                reply += `Confidence: ${Math.round(llmResult.confidence * 100)}%\n`;
-                            }
-                            if (llmResult.alternatives && llmResult.alternatives.length > 0) {
-                                reply += `Alternatives:\n`;
-                                llmResult.alternatives.forEach((alt: any, i: number) => {
-                                    reply += `  - ${alt.command || alt.terminal || 'N/A'}: ${alt.description || ''}\n`;
-                                });
-                            }
-                            // Unify: If user asks to run tests, override with project type detection
-                            const testIntent = /(open( the)? terminal( and)? run( my)? tests?)|(run( my)? tests?)|(test( the)?( app| application)?)/i;
-                            const confidence = llmResult.confidence || 0;
-                            const hasCommand = !!llmResult.command;
-                            const hasTerminal = !!llmResult.terminal;
-                            if (testIntent.test(message.text) || (hasTerminal && testIntent.test(llmResult.terminal || ''))) {
-                                await vscode.commands.executeCommand('workbench.action.terminal.toggleTerminal');
-                                await new Promise(res => setTimeout(res, 300));
-                                const { command: testCmd, language } = await getTestCommandForProject();
-                                let terminal = vscode.window.activeTerminal;
-                                if (!terminal) {
-                                    terminal = vscode.window.createTerminal('NLC Terminal');
-                                }
-                                terminal.show();
-                                terminal.sendText(testCmd, true);
-                                reply += `\n✅ Detected project type: ${language}\nOpened terminal and ran: ${testCmd}`;
-                                this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
-                                return;
-                            }
-                            if ((hasCommand || hasTerminal) && confidence >= 0.9) {
-                                if (hasCommand) {
-                                    vscode.commands.executeCommand(llmResult.command!);
-                                    reply += `\n✅ Executed VS Code command: ${llmResult.command}`;
-                                } else if (hasTerminal) {
-                                    let terminal = vscode.window.activeTerminal;
-                                    if (!terminal) {
-                                        terminal = vscode.window.createTerminal('NLC Terminal');
-                                    }
-                                    terminal.show();
-                                    terminal.sendText(llmResult.terminal!, true);
-                                    reply += `\n✅ Executed terminal command: ${llmResult.terminal}`;
-                                }
-                                this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
-                            } else {
-                                reply += '\n🤖 I need a bit more detail or clarification before I can run a command. Please rephrase or provide more information.';
-                                this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
-                            }
-                        }
-                    } catch (err) {
-                        let msg = 'Unknown error';
-                        if (err && typeof err === 'object' && 'message' in err) {
-                            msg = (err as any).message;
-                        } else if (typeof err === 'string') {
-                            msg = err;
-                        }
-                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ Error calling LLM: ' + msg });
-                    }
                 }
             }
         );
