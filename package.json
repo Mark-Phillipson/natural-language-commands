@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/Mark-Phillipson/natural-language-commands.git"
   },
-  "version": "0.0.1",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.54.0"
   },
@@ -84,8 +84,7 @@
         "command": "natural-language-commands.removeApiKey",
         "title": "Remove OpenAI API Key",
         "category": "NLC"
-      }
-      ,
+      },
       {
         "command": "commandHistory.deleteItem",
         "title": "Delete from History",
@@ -131,7 +130,10 @@
         },
         "naturalLanguageCommands.confidenceThresholds": {
           "type": "object",
-          "default": { "autoAccept": 0.9, "confirm": 0.7 },
+          "default": {
+            "autoAccept": 0.9,
+            "confirm": 0.7
+          },
           "properties": {
             "autoAccept": {
               "type": "number",
