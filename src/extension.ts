@@ -63,12 +63,6 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 	// Command to focus the NLC Chat sidebar
-	context.subscriptions.push(
-		vscode.commands.registerCommand('nlc.focusChatSidebar', async () => {
-			// Only focus the Command History container (activity bar); chat tab is first
-			await vscode.commands.executeCommand('workbench.view.extension.commandHistoryContainer');
-		})
-	);
 	// Register the sidebar chat webview view provider
 	const chatSidebarProvider = new ChatSidebarProvider(context.extensionUri);
 	context.subscriptions.push(
@@ -191,7 +185,7 @@ export function activate(context: vscode.ExtensionContext) {
 				{ label: 'Paste', command: 'editor.action.clipboardPasteAction' },
 				{ label: 'Find', command: 'actions.find' },
 				{ label: 'Replace', command: 'editor.action.startFindReplaceAction' },
-				{ label: 'Select All', command: 'editor.action.selectAll' },
+				// { label: 'Select All', command: 'editor.action.selectAll' },
 			];
 			const pick = await vscode.window.showQuickPick(actions, { placeHolder: 'Select an edit action to run:', canPickMany: false });
 			if (pick && pick.command) {
@@ -435,6 +429,14 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
+    // Register delete item command for command history (stub)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('commandHistory.deleteItem', (item) => {
+            vscode.window.showInformationMessage('Delete from history triggered. (Implement actual delete logic here)');
+            // TODO: Implement actual deletion from CommandHistoryProvider
+        })
+    );
+
 	// Add search bar to the sidebar
 	vscode.window.createInputBox().onDidChangeValue(value => {
 		commandHistoryProvider.setFilter(value);
@@ -662,7 +664,7 @@ export function activate(context: vscode.ExtensionContext) {
 						vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
 					} else {
 						vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}. Redirecting to chat for clarification.`);
-						await vscode.commands.executeCommand('nlc.focusChatSidebar');
+						await vscode.commands.executeCommand('workbench.action.focusView.nlcChatView');
 						await chatSidebarProvider.sendUserMessageToChat(userInput);
 					}
 					return;
@@ -680,7 +682,7 @@ export function activate(context: vscode.ExtensionContext) {
 							vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
 						} else {
 							vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}. Redirecting to chat for clarification.`);
-							await vscode.commands.executeCommand('nlc.focusChatSidebar');
+							await vscode.commands.executeCommand('workbench.action.focusView.nlcChatView');
 							await chatSidebarProvider.sendUserMessageToChat(userInput);
 						}
 					} else {
@@ -883,7 +885,7 @@ export function activate(context: vscode.ExtensionContext) {
 					vscode.window.showInformationMessage(`[NLC FALLBACK] Executed VS Code command (sidebar fallback): ${mapped}`);
 				} else {
 					vscode.window.showWarningMessage(`[NLC FALLBACK] Command not found or failed: ${mapped}. Redirecting to chat for clarification.`);
-					await vscode.commands.executeCommand('nlc.focusChatSidebar');
+					await vscode.commands.executeCommand('workbench.action.focusView.nlcChatView');
 					await chatSidebarProvider.sendUserMessageToChat(userInput);
 				}
 				return;
@@ -895,7 +897,7 @@ export function activate(context: vscode.ExtensionContext) {
 			// If confidence is low or no actionable command, open the sidebar chat for clarification and send the user input to chat.
 			if (typeof confidence === 'number' && confidence < confirm) {
 				vscode.window.showWarningMessage('Could not confidently identify your command. Opening the chat sidebar for clarification.');
-				await vscode.commands.executeCommand('nlc.focusChatSidebar');
+				await vscode.commands.executeCommand('workbench.action.focusView.nlcChatView');
 				// Send the user input to the chat sidebar for LLM response
 				await chatSidebarProvider.sendUserMessageToChat(userInput);
 				return;
@@ -903,7 +905,7 @@ export function activate(context: vscode.ExtensionContext) {
 			// If confidence is missing (undefined/null), also open chat sidebar and send user input
 			if (typeof confidence !== 'number') {
 				vscode.window.showWarningMessage('Could not identify your command. Opening the chat sidebar for clarification.');
-				await vscode.commands.executeCommand('nlc.focusChatSidebar');
+				await vscode.commands.executeCommand('workbench.action.focusView.nlcChatView');
 				await chatSidebarProvider.sendUserMessageToChat(userInput);
 				return;
 			}

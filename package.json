@@ -51,11 +51,6 @@
     },
     "commands": [
       {
-        "command": "nlc.focusChatSidebar",
-        "title": "Focus on NLC Chat View",
-        "category": "NLC"
-      },
-      {
         "command": "natural-language-commands.run",
         "title": "Run Command...",
         "category": "NLC"
@@ -75,12 +70,6 @@
         "title": "Re-run from History",
         "category": "NLC"
       },
-
-      {
-        "command": "commandHistory.deleteItem",
-        "title": "Delete from History",
-        "category": "NLC"
-      },
       {
         "command": "natural-language-commands.debugMenu",
         "title": "Debugging Commands",
@@ -94,6 +83,12 @@
       {
         "command": "natural-language-commands.removeApiKey",
         "title": "Remove OpenAI API Key",
+        "category": "NLC"
+      }
+      ,
+      {
+        "command": "commandHistory.deleteItem",
+        "title": "Delete from History",
         "category": "NLC"
       }
     ],
