@@ -1,6 +1,6 @@
 {
   "name": "natural-language-commands",
-  "publisher": "mark-phillipson",
+  "publisher": "marcusvoicecoder",
   "displayName": "Natural Language Commands",
   "description": " receive natural language commands and perform a Visual Studio code command that matches",
   "icon": "natural-language-commands.png",
