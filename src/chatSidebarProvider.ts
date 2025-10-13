@@ -540,6 +540,7 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
             }
             clearBtn.addEventListener('click', function() {
                 chatContainer.innerHTML = '';
+                userInput.focus();
             });
             userInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
