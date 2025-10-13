@@ -36,7 +36,6 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                 { label: 'Select All', command: 'editor.action.selectAll' },
             ],
             'selection': [
-                { label: 'Select All', command: 'editor.action.selectAll' },
                 { label: 'Expand Selection', command: 'editor.action.smartSelect.expand' },
                 { label: 'Shrink Selection', command: 'editor.action.smartSelect.shrink' },
                 { label: 'Copy Line Up', command: 'editor.action.copyLinesUpAction' },
@@ -186,7 +185,7 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
         if (!this._view) {
             // If the view is not yet resolved, log a warning and try to focus the chat sidebar
             console.warn('[NLC] ChatSidebarProvider: _view is not resolved. Attempting to focus chat sidebar.');
-            await vscode.commands.executeCommand('nlc.focusChatSidebar');
+            await vscode.commands.executeCommand('workbench.action.focusView.nlcChatView');
             // Try again after focusing
             setTimeout(() => {
                 if (!this._view) {
@@ -362,8 +361,6 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                     } else if (typeof err === 'string') {
                         msg = err;
                     }
-                    this._sendMessageToWebview('addMessage', { role: 'assistant', content: `[NLC ERROR] Exception in onDidReceiveMessage: ${msg}` });
-                    // Also log to console for developer
                     console.error('[NLC ERROR] Exception in onDidReceiveMessage:', err);
                 }
                 if (message.type === 'userMessage') {
