@@ -138,6 +138,47 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
     public async sendUserMessageToChat(text: string) {
     // Do NOT add the user message here; it is now always added in onDidReceiveMessage
 
+
+        // Special case: focus Copilot Chat if user requests it (run this check before LLM fallback)
+        if (/\b(copilot chat|github copilot chat|focus copilot chat|move (the )?keyboard focus (to|into) copilot chat|focus chat panel|focus copilot panel|focus github copilot chat)\b/i.test(text.trim())) {
+            this._sendMessageToWebview('addMessage', { role: 'assistant', content: 'Focusing GitHub Copilot Chat panel...' });
+            // Try all known Copilot Chat focus commands in order
+            const focusCommands = [
+                'github.copilot-chat.focus',
+                'workbench.panel.chat.view.copilot.focus',
+                'workbench.action.focusChat',
+                'workbench.view.extension.github-copilot-chat',
+                'workbench.view.extension.copilot-chat',
+                'workbench.action.openChat',
+                'workbench.action.focusSidePanel',
+            ];
+            // Remove NLC chat view focus command from Copilot Chat focus attempts
+            let found = false;
+            let errors: string[] = [];
+            for (const cmd of focusCommands) {
+                try {
+                    await vscode.commands.executeCommand(cmd);
+                    found = true;
+                    break;
+                } catch (err) {
+                    let msg = '';
+                    if (err instanceof Error) {
+                        msg = err.message;
+                    } else {
+                        msg = String(err);
+                    }
+                    errors.push(`${cmd}: ${msg}`);
+                }
+            }
+            if (!found) {
+                this._sendMessageToWebview('addMessage', {
+                    role: 'assistant',
+                    content: '❌ Could not focus Copilot Chat. None of the known commands worked.\nCommands tried:\n' + focusCommands.map(c => `- ${c}`).join('\n')
+                });
+            }
+            return;
+        }
+
         // Check for pending confirmation
         if (this.pendingConfirmation) {
             const answer = text.trim().toLowerCase();
@@ -382,6 +423,23 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                 msg = err;
             }
             this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ Error calling LLM: ' + msg });
+        }
+        // Special case: focus Copilot Chat if user requests it
+        if (/\b(copilot chat|github copilot chat|focus copilot chat|move (the )?keyboard focus (to|into) copilot chat|focus chat panel|focus copilot panel|focus github copilot chat)\b/i.test(text.trim())) {
+            this._sendMessageToWebview('addMessage', { role: 'assistant', content: 'Focusing GitHub Copilot Chat panel...' });
+            // Try Copilot Chat sidebar focus first
+            vscode.commands.executeCommand('github.copilot-chat.focus').then(
+                undefined,
+                async () => {
+                    // Fallback: try focusing the main chat panel (VS Code built-in)
+                    try {
+                        await vscode.commands.executeCommand('workbench.action.focusChat');
+                    } catch (err) {
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: '❌ Could not focus Copilot Chat. The command may not be available in your VS Code version or Copilot Chat is not installed.' });
+                    }
+                }
+            );
+            return;
         }
     }
 

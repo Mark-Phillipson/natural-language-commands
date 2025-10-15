@@ -1,1 +1,0 @@
- when we are deciding on what terminal command to use can we detect the operating system and if we are in windows use the appropriate powershell command instead of bash?
