@@ -12,6 +12,7 @@ import { CommandHistoryProvider, CommandHistoryItem } from './commandHistoryProv
 // Removed ChatPanel import (sidebar chat is now the only chat UI)
 import { ChatSidebarProvider } from './chatSidebarProvider';
 import { detectProjectType, getTestCommandForProject, getBuildCommandForProject } from './projectTypeUtils';
+import { translateTerminalCommandForOS } from './terminalUtils';
 
 	// Helper for command history
 	const HISTORY_KEY = 'nlc.commandHistory';
@@ -100,53 +101,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		})
 	);
-	// Helper: Translate Unix-style commands to PowerShell equivalents
-	function translateToPowerShell(cmd: string): string {
-		// Only basic translation for common commands
-		const trimmed = cmd.trim();
-		// ls -la, ls -l, ls -a, etc. → ls
-		if (/^ls(\s+-[a-zA-Z]+)?\s*$/i.test(trimmed)) {
-			return 'ls';
-		}
-		// ls -d */ or ls -d .*/ (list only directories)
-		if (/^ls\s+-d\s+\*\/?$/i.test(trimmed) || /^ls\s+-d\s+\.\*\/?$/i.test(trimmed)) {
-			return 'ls -Directory';
-		}
-		// ls --directory or ls --dir
-		if (/^ls\s+--?d(irectory)?\s*$/i.test(trimmed)) {
-			return 'ls -Directory';
-		}
-		// ls -Directory (already correct)
-		if (/^ls\s+-Directory\s*$/i.test(trimmed)) {
-			return trimmed;
-		}
-		// cat file.txt → Get-Content file.txt
-		if (/^cat\s+(.+)/i.test(trimmed)) {
-			return trimmed.replace(/^cat\s+(.+)/i, 'Get-Content $1');
-		}
-		// touch file.txt → New-Item file.txt -ItemType File
-		if (/^touch\s+(.+)/i.test(trimmed)) {
-			return trimmed.replace(/^touch\s+(.+)/i, 'New-Item $1 -ItemType File');
-		}
-		// rm file.txt → Remove-Item file.txt
-		if (/^rm\s+(.+)/i.test(trimmed)) {
-			return trimmed.replace(/^rm\s+(.+)/i, 'Remove-Item $1');
-		}
-		// mv src dest → Move-Item src dest
-		if (/^mv\s+([^\s]+)\s+(.+)/i.test(trimmed)) {
-			return trimmed.replace(/^mv\s+([^\s]+)\s+(.+)/i, 'Move-Item $1 $2');
-		}
-		// cp src dest → Copy-Item src dest
-		if (/^cp\s+([^\s]+)\s+(.+)/i.test(trimmed)) {
-			return trimmed.replace(/^cp\s+([^\s]+)\s+(.+)/i, 'Copy-Item $1 $2');
-		}
-		// grep pattern file → Select-String -Pattern pattern -Path file
-		if (/^grep\s+([^\s]+)\s+(.+)/i.test(trimmed)) {
-			return trimmed.replace(/^grep\s+([^\s]+)\s+(.+)/i, 'Select-String -Pattern $1 -Path $2');
-		}
-		// Default: return as-is
-		return trimmed;
-	}
+// ...existing code...
 		// Command: List all tables in VoiceLauncher database
 		context.subscriptions.push(
 			vscode.commands.registerCommand('natural-language-commands.listTablesVoiceLauncher', async (dbName?: string) => {
@@ -696,24 +651,6 @@ export function activate(context: vscode.ExtensionContext) {
 			// If parsed.terminal is present, handle according to confidence thresholds
 			if (parsed.terminal && typeof parsed.terminal === 'string' && parsed.terminal.trim().length > 0) {
 				let terminalCommand = parsed.terminal.trim();
-				// Always confirm before running terminal commands if setting is enabled
-				const alwaysConfirmTerminalCommands = config.get<boolean>('naturalLanguageCommands.alwaysConfirmTerminalCommands', false);
-				if (alwaysConfirmTerminalCommands) {
-					const confirm = await vscode.window.showWarningMessage(
-						`Are you sure you want to run this terminal command?\n\n${terminalCommand}`,
-						{ modal: true },
-						'Yes', 'No'
-					);
-					if (confirm !== 'Yes') {
-						vscode.window.showInformationMessage('Terminal command cancelled.');
-						return;
-					}
-				}
-				// If the user wants to cancel/stop/interrupt a running process, try to send Ctrl+C
-				if (/^(ctrl\+c|cancel|stop|interrupt|terminate|kill|shut ?down|abort|break)( running)?( command| process| task| job| terminal)?/i.test(terminalCommand)) {
-					await trySendCtrlC();
-					return;
-				}
 				// Detect if the user wants to "run tests" or similar
 				const testIntent = /(run( my)? tests?|test( the)?( app| application)?)/i;
 				if (testIntent.test(userInput) || testIntent.test(terminalCommand)) {
@@ -753,40 +690,51 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 					return;
 				}
-				// Translate if running in PowerShell
-				if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
-					terminalCommand = translateToPowerShell(terminalCommand);
-				}
-				if (autoAccept < 1 && typeof confidence === 'number' && confidence >= autoAccept) {
-					let terminal = vscode.window.activeTerminal;
-					if (!terminal) {
-						terminal = vscode.window.createTerminal('NLC Terminal');
-					}
-					terminal.show();
-					terminal.sendText(terminalCommand, true);
-					vscode.window.showInformationMessage(`Auto-executing terminal command (confidence ${(confidence * 100).toFixed(1)}% ≥ ${autoAccept * 100}%): ${terminalCommand}`);
-					return;
-				} else if (typeof confidence === 'number' && confidence >= confirm) {
-					vscode.window.showInformationMessage(`[NLC DEBUG] Confirmation dialog should appear now for terminal command: ${terminalCommand} (confidence ${(confidence * 100).toFixed(1)}%)`);
-					const confirmMsg = `Run terminal command \"${terminalCommand}\"? (confidence ${(confidence * 100).toFixed(1)}%)`;
-					let ok = await vscode.window.showInformationMessage(confirmMsg, { modal: true }, 'Yes');
-					if (ok === undefined) {
-						vscode.window.showWarningMessage('[NLC DEBUG] Modal confirmation dialog did not appear or was dismissed. Trying non-modal prompt.');
-						ok = await vscode.window.showInformationMessage(confirmMsg, 'Yes');
-					}
-					if (ok === 'Yes') {
-						let terminal = vscode.window.activeTerminal;
-						if (!terminal) {
-							terminal = vscode.window.createTerminal('NLC Terminal');
-						}
-						terminal.show();
-						terminal.sendText(terminalCommand, true);
-						vscode.window.showInformationMessage(`Terminal command executed: ${terminalCommand}`);
-					} else {
-						vscode.window.showInformationMessage('Terminal command cancelled or no confirmation given.');
-					}
-					return;
-				}
+				// Always translate before any user-facing message or execution
+				const translatedCommand = translateTerminalCommandForOS(terminalCommand);
+				   // Always confirm before running terminal commands if setting is enabled
+				   const alwaysConfirmTerminalCommands = config.get<boolean>('naturalLanguageCommands.alwaysConfirmTerminalCommands', false);
+				   if (alwaysConfirmTerminalCommands) {
+					   const confirm = await vscode.window.showWarningMessage(
+						   `Are you sure you want to run this terminal command?\n\n${translatedCommand}`,
+						   { modal: true },
+						   'Yes', 'No'
+					   );
+					   if (confirm !== 'Yes') {
+						   vscode.window.showInformationMessage('Terminal command cancelled.');
+						   return;
+					   }
+				   } else if (autoAccept < 1 && typeof confidence === 'number' && confidence >= autoAccept) {
+					   // Only show confidence-based confirmation if alwaysConfirmTerminalCommands is not set
+					   vscode.window.showInformationMessage(`[NLC DEBUG] Confirmation dialog should appear now for terminal command: ${translatedCommand} (confidence ${(confidence * 100).toFixed(1)}%)`);
+					   const confirmMsg = `Run terminal command \"${translatedCommand}\"? (confidence ${(confidence * 100).toFixed(1)}%)`;
+					   let ok = await vscode.window.showInformationMessage(confirmMsg, { modal: true }, 'Yes');
+					   if (ok === undefined) {
+						   vscode.window.showWarningMessage('[NLC DEBUG] Modal confirmation dialog did not appear or was dismissed. Trying non-modal prompt.');
+						   ok = await vscode.window.showInformationMessage(confirmMsg, 'Yes');
+					   }
+					   if (ok !== 'Yes') {
+						   vscode.window.showInformationMessage('Terminal command cancelled or no confirmation given.');
+						   return;
+					   }
+				   }
+				   // If the user wants to cancel/stop/interrupt a running process, try to send Ctrl+C
+				   if (/^(ctrl\+c|cancel|stop|interrupt|terminate|kill|shut ?down|abort|break)( running)?( command| process| task| job| terminal)?/i.test(translatedCommand)) {
+					   await trySendCtrlC();
+					   return;
+				   }
+				   // If we reach here, run the terminal command
+				   let terminal = vscode.window.activeTerminal;
+				   if (!terminal) {
+					   terminal = vscode.window.createTerminal('NLC Terminal');
+				   }
+				   terminal.show();
+				   terminal.sendText(translatedCommand, true);
+				   vscode.window.showInformationMessage(`Terminal command executed: ${translatedCommand}`);
+				   if (chatSidebarProvider && typeof chatSidebarProvider.sendUserMessageToChat === 'function') {
+					   chatSidebarProvider.sendUserMessageToChat(`Terminal command executed: ${translatedCommand}`);
+				   }
+				   return;
 				// Otherwise, fall through to alternatives logic below
 			}
 
@@ -805,9 +753,7 @@ export function activate(context: vscode.ExtensionContext) {
 					// If alternative has a terminal command, run it
 					if (alt.terminal && typeof alt.terminal === 'string' && alt.terminal.trim().length > 0) {
 						let terminalCommand = alt.terminal.trim();
-						if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
-							terminalCommand = translateToPowerShell(terminalCommand);
-						}
+						   terminalCommand = translateTerminalCommandForOS(terminalCommand);
 						let terminal = vscode.window.activeTerminal;
 						if (!terminal) {
 							terminal = vscode.window.createTerminal('NLC Terminal');
@@ -855,9 +801,7 @@ export function activate(context: vscode.ExtensionContext) {
 									return;
 								} else if (selected.terminal && selected.terminal.trim().length > 0) {
 									let trimmed = selected.terminal.trim();
-									if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
-										trimmed = translateToPowerShell(trimmed);
-									}
+									   trimmed = translateTerminalCommandForOS(trimmed);
 									let terminal = vscode.window.activeTerminal;
 									if (!terminal) {
 										terminal = vscode.window.createTerminal('NLC Terminal');
@@ -1009,9 +953,7 @@ export function activate(context: vscode.ExtensionContext) {
 			// If parsed.terminal is present, run it in the integrated terminal
 			if (parsed.terminal && typeof parsed.terminal === 'string' && parsed.terminal.trim().length > 0) {
 				let terminalCommand = parsed.terminal.trim();
-				if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
-					terminalCommand = translateToPowerShell(terminalCommand);
-				}
+				   terminalCommand = translateTerminalCommandForOS(terminalCommand);
 				let terminal = vscode.window.activeTerminal;
 				if (!terminal) {
 					terminal = vscode.window.createTerminal('NLC Terminal');

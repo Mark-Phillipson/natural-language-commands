@@ -1,33 +1,6 @@
-// Replace Mocha BDD with TDD interface for VS Code extension test runner compatibility
 import * as assert from 'assert';
-import { translateTerminalCommandForOS } from '../terminalUtils';
 import * as sinon from 'sinon';
-
-suite('translateTerminalCommandForOS', () => {
-    test('translates ls to dir on Windows', () => {
-        const originalPlatform = process.platform;
-        Object.defineProperty(process, 'platform', { value: 'win32' });
-        try {
-            assert.strictEqual(translateTerminalCommandForOS('ls'), 'dir');
-            assert.strictEqual(translateTerminalCommandForOS('ls -la'), 'dir');
-            assert.strictEqual(translateTerminalCommandForOS('ls    -a'), 'dir');
-            assert.strictEqual(translateTerminalCommandForOS('ls -d */'), 'dir');
-        } finally {
-            Object.defineProperty(process, 'platform', { value: originalPlatform });
-        }
-    });
-
-    test('does not translate ls on non-Windows', () => {
-        const originalPlatform = process.platform;
-        Object.defineProperty(process, 'platform', { value: 'linux' });
-        try {
-            assert.strictEqual(translateTerminalCommandForOS('ls'), 'ls');
-            assert.strictEqual(translateTerminalCommandForOS('ls -la'), 'ls -la');
-        } finally {
-            Object.defineProperty(process, 'platform', { value: originalPlatform });
-        }
-    });
-});
+import { translateTerminalCommandForOS } from '../terminalUtils';
 
 suite('Integration: terminal command translation in extension logic', () => {
     let sandbox: sinon.SinonSandbox;

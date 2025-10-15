@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { detectProjectType, getTestCommandForProject, getBuildCommandForProject } from './projectTypeUtils';
+import { translateTerminalCommandForOS } from './terminalUtils';
 
 export class ChatSidebarProvider implements vscode.WebviewViewProvider {
     private pendingConfirmation: null | {
@@ -170,8 +171,9 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                     }
                     terminal.show();
                     if (this.pendingConfirmation.value && typeof this.pendingConfirmation.value === 'string') {
-                        terminal.sendText(this.pendingConfirmation.value, true);
-                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n✅ Confirmed and executed terminal command: ${this.pendingConfirmation.value}` });
+                        const translatedCommand = translateTerminalCommandForOS(this.pendingConfirmation.value);
+                        terminal.sendText(translatedCommand, true);
+                        this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n✅ Confirmed and executed terminal command: ${translatedCommand}` });
                     } else {
                         this._sendMessageToWebview('addMessage', { role: 'assistant', content: `${this.pendingConfirmation.replyPrefix}\n❌ No terminal command to execute.` });
                     }
@@ -331,13 +333,15 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                             }
                         }
                         if (hasTerminal) {
+                            // Always translate before execution
+                            const translatedCommand = translateTerminalCommandForOS(llmResult.terminal!);
                             let terminal = vscode.window.activeTerminal;
                             if (!terminal) {
                                 terminal = vscode.window.createTerminal('NLC Terminal');
                             }
                             terminal.show();
-                            terminal.sendText(llmResult.terminal!, true);
-                            reply += `\n✅ Auto-executed terminal command: ${llmResult.terminal}`;
+                            terminal.sendText(translatedCommand, true);
+                            reply += `\n✅ Auto-executed terminal command: ${translatedCommand}`;
                         }
                         this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
                     } else if (confidence >= confirm || autoAccept === 1) {
@@ -348,8 +352,9 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                             confirmMsg = `Do you want to run this command? (yes/no)\nVS Code Command: ${llmResult.command}\nConfidence: ${(confidence * 100).toFixed(1)}%`;
                             this.pendingConfirmation = { type: 'command', value: llmResult.command!, replyPrefix: reply.trim() };
                         } else if (hasTerminal) {
-                            confirmMsg = `Do you want to run this terminal command? (yes/no)\nTerminal Command: ${llmResult.terminal}\nConfidence: ${(confidence * 100).toFixed(1)}%`;
-                            this.pendingConfirmation = { type: 'terminal', value: llmResult.terminal!, replyPrefix: reply.trim() };
+                            const translatedCommand = translateTerminalCommandForOS(llmResult.terminal!);
+                            confirmMsg = `Do you want to run this terminal command? (yes/no)\nTerminal Command: ${translatedCommand}\nConfidence: ${(confidence * 100).toFixed(1)}%`;
+                            this.pendingConfirmation = { type: 'terminal', value: translatedCommand, replyPrefix: reply.trim() };
                         }
                         this._sendMessageToWebview('addMessage', { role: 'assistant', content: confirmMsg });
                         // Do NOT send the intent/command/percentage reply until confirmation is received
