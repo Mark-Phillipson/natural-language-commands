@@ -690,8 +690,14 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 					return;
 				}
-				// Always translate before any user-facing message or execution
-				const translatedCommand = translateTerminalCommandForOS(terminalCommand);
+				   // Always translate before any user-facing message or execution
+				   const translatedCommand = translateTerminalCommandForOS(terminalCommand);
+				   // Suggest Copilot, copy to clipboard, and notify
+				   await vscode.env.clipboard.writeText(translatedCommand);
+				   vscode.window.showInformationMessage(
+					   `💡 Tip: You can use GitHub Copilot to generate, review, or copy terminal commands.\n\n` +
+					   `The suggested terminal command has been copied to your clipboard: ${translatedCommand}`
+				   );
 				   // Always confirm before running terminal commands if setting is enabled
 				   const alwaysConfirmTerminalCommands = config.get<boolean>('naturalLanguageCommands.alwaysConfirmTerminalCommands', false);
 				   if (alwaysConfirmTerminalCommands) {

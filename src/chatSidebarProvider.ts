@@ -353,6 +353,12 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                             this.pendingConfirmation = { type: 'command', value: llmResult.command!, replyPrefix: reply.trim() };
                         } else if (hasTerminal) {
                             const translatedCommand = translateTerminalCommandForOS(llmResult.terminal!);
+                            // Suggest Copilot, copy to clipboard, and notify
+                            await vscode.env.clipboard.writeText(translatedCommand);
+                            this._sendMessageToWebview('addMessage', {
+                                role: 'assistant',
+                                content: `💡 Tip: You can use GitHub Copilot to generate, review, or copy terminal commands.\n\nThe suggested terminal command has been copied to your clipboard: ${translatedCommand}`
+                            });
                             confirmMsg = `Do you want to run this terminal command? (yes/no)\nTerminal Command: ${translatedCommand}\nConfidence: ${(confidence * 100).toFixed(1)}%`;
                             this.pendingConfirmation = { type: 'terminal', value: translatedCommand, replyPrefix: reply.trim() };
                         }

@@ -7,6 +7,10 @@ function translateTerminalCommandForOS(cmd: string): string {
     let trimmed = cmd.trim();
     // Normalize multiple spaces to single space
     trimmed = trimmed.replace(/\s+/g, ' ');
+    // Natural language: go up one level, parent directory, etc.
+    if (/^(go up( one)? level|go to parent( directory)?|up one level|parent directory)$/i.test(trimmed)) {
+        return 'cd ..';
+    }
     // Any ls command with any flags or extra spaces → dir
     if (/^ls(\s+(-[a-zA-Z]+))*\s*$/i.test(trimmed) || /^ls(\s+[^|]*)?$/i.test(trimmed)) {
         return 'dir';
