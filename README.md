@@ -85,6 +85,23 @@ The extension keeps a session-based and persistent command history, accessible v
 	- If confidence ≥ `confirm` but < `autoAccept`, you are asked for confirmation.
 	- If confidence < `confirm`, alternatives are shown or the chat sidebar is opened.
 	- Set `autoAccept` to 1 to always ask for confirmation (current behavior). Set to 0 to always auto-accept (advanced users only).
+- `naturalLanguageCommands.alwaysConfirmTerminalCommands`: (default: true) When enabled, always ask for confirmation before executing terminal commands, regardless of confidence level. This provides an extra layer of security to prevent accidental execution of potentially destructive commands. Certain dangerous commands (like `rm`, `del`, `format`) will always require confirmation even if this setting is disabled.
+
+## 🔒 Security
+
+### Terminal Command Confirmation
+By default, the extension will **always ask for confirmation** before executing any terminal command, regardless of the LLM's confidence level. This is controlled by the `alwaysConfirmTerminalCommands` setting (default: `true`).
+
+When a terminal command is detected:
+- **In the main command interface**: A modal dialog will appear asking you to confirm the command
+- **In the chat interface**: The chat will ask "Do you want to run this terminal command? (yes/no)" and wait for your response
+
+This feature is designed to prevent accidental execution of potentially destructive commands like:
+- File deletion commands (`rm`, `del`, `Remove-Item`)
+- Directory operations (`rmdir`, `rd`)
+- System commands (`shutdown`, `reboot`, `format`)
+
+⚠️ **Important**: Even if you disable `alwaysConfirmTerminalCommands`, dangerous commands will still require confirmation for your safety.
 
 
 ## 🗝️ Providing Your OpenAI API Key

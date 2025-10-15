@@ -151,6 +151,11 @@
             }
           },
           "description": "Controls the confidence thresholds for auto-accepting, confirming, or showing alternatives for commands. Set autoAccept to 1 to always ask for confirmation; set to 0 to always auto-accept."
+        },
+        "naturalLanguageCommands.alwaysConfirmTerminalCommands": {
+          "type": "boolean",
+          "default": true,
+          "description": "When enabled, always ask for confirmation before executing terminal commands, regardless of confidence level. This provides an extra layer of security to prevent accidental execution of potentially destructive commands. Certain dangerous commands (like rm, del, format) will always require confirmation even if this setting is disabled."
         }
       }
     }
