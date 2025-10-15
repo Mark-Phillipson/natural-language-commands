@@ -17,6 +17,40 @@ import { detectProjectType, getTestCommandForProject, getBuildCommandForProject 
 	const HISTORY_KEY = 'nlc.commandHistory';
 	const HISTORY_LIMIT = 20;
 
+	/**
+	 * Checks if a terminal command is potentially dangerous and should always require confirmation.
+	 * @param command The terminal command to check
+	 * @returns true if the command is potentially dangerous
+	 */
+	function isDangerousCommand(command: string): boolean {
+		const lowerCmd = command.toLowerCase().trim();
+		
+		// Patterns for dangerous commands (both Unix and Windows)
+		const dangerousPatterns = [
+			/^rm\s+(-[rf]+\s+)?[\/*]/i,           // rm, rm -rf
+			/^del\s+/i,                            // Windows del
+			/^rmdir\s+/i,                          // rmdir
+			/^rd\s+/i,                             // Windows rd
+			/^format\s+/i,                         // format disk
+			/^diskpart/i,                          // Windows diskpart
+			/^shutdown/i,                          // shutdown
+			/^reboot/i,                            // reboot
+			/^poweroff/i,                          // poweroff
+			/^halt/i,                              // halt
+			/^init\s+[06]/i,                       // init 0/6
+			/^Remove-Item\s+/i,                    // PowerShell Remove-Item
+			/^Clear-Host/i,                        // PowerShell Clear-Host (less dangerous but still)
+			/^dd\s+if=/i,                          // dd command
+			/^mkfs/i,                              // make filesystem
+			/^fdisk/i,                             // fdisk
+			/^parted/i,                            // parted
+			/\|\s*sudo\s+/i,                       // anything piped to sudo
+			/^sudo\s+(rm|del|format|dd|mkfs)/i    // sudo with dangerous commands
+		];
+		
+		return dangerousPatterns.some(pattern => pattern.test(lowerCmd));
+	}
+
 export function activate(context: vscode.ExtensionContext) {
 
 	// Helper to get OpenAI API key: check SecretStorage, then env
@@ -641,6 +675,8 @@ export function activate(context: vscode.ExtensionContext) {
 			const thresholds = config.get<{ autoAccept: number; confirm: number }>('naturalLanguageCommands.confidenceThresholds', { autoAccept: 0.9, confirm: 0.7 });
 			const autoAccept = typeof thresholds.autoAccept === 'number' ? thresholds.autoAccept : 0.9;
 			const confirm = typeof thresholds.confirm === 'number' ? thresholds.confirm : 0.7;
+			// Read terminal command confirmation setting
+			const alwaysConfirmTerminal = config.get<boolean>('naturalLanguageCommands.alwaysConfirmTerminalCommands', true);
 
 			// If parsed.command is present, handle according to confidence thresholds
 			if (parsed.command && typeof parsed.command === 'string' && parsed.command.trim().length > 0) {
@@ -744,7 +780,37 @@ export function activate(context: vscode.ExtensionContext) {
 				if (vscode.env.shell && vscode.env.shell.toLowerCase().includes('pwsh')) {
 					terminalCommand = translateToPowerShell(terminalCommand);
 				}
-				if (autoAccept < 1 && typeof confidence === 'number' && confidence >= autoAccept) {
+				
+				// Check if confirmation is required for this terminal command
+				const requiresConfirmation = alwaysConfirmTerminal || isDangerousCommand(terminalCommand);
+				
+				// If confirmation is required or confidence is below autoAccept threshold, ask for confirmation
+				if (requiresConfirmation || !(autoAccept < 1 && typeof confidence === 'number' && confidence >= autoAccept)) {
+					// Show confirmation dialog unless confidence is too low
+					if (typeof confidence === 'number' && confidence >= confirm) {
+						vscode.window.showInformationMessage(`[NLC DEBUG] Confirmation dialog should appear now for terminal command: ${terminalCommand} (confidence ${(confidence * 100).toFixed(1)}%)`);
+						const confirmMsg = `Run terminal command \"${terminalCommand}\"? (confidence ${(confidence * 100).toFixed(1)}%)`;
+						let ok = await vscode.window.showInformationMessage(confirmMsg, { modal: true }, 'Yes');
+						if (ok === undefined) {
+							vscode.window.showWarningMessage('[NLC DEBUG] Modal confirmation dialog did not appear or was dismissed. Trying non-modal prompt.');
+							ok = await vscode.window.showInformationMessage(confirmMsg, 'Yes');
+						}
+						if (ok === 'Yes') {
+							let terminal = vscode.window.activeTerminal;
+							if (!terminal) {
+								terminal = vscode.window.createTerminal('NLC Terminal');
+							}
+							terminal.show();
+							terminal.sendText(terminalCommand, true);
+							vscode.window.showInformationMessage(`Terminal command executed: ${terminalCommand}`);
+						} else {
+							vscode.window.showInformationMessage('Terminal command cancelled or no confirmation given.');
+						}
+						return;
+					}
+					// If confidence is too low, fall through to alternatives logic
+				} else {
+					// Auto-execute without confirmation (only if alwaysConfirmTerminal is false and not dangerous)
 					let terminal = vscode.window.activeTerminal;
 					if (!terminal) {
 						terminal = vscode.window.createTerminal('NLC Terminal');
@@ -753,28 +819,7 @@ export function activate(context: vscode.ExtensionContext) {
 					terminal.sendText(terminalCommand, true);
 					vscode.window.showInformationMessage(`Auto-executing terminal command (confidence ${(confidence * 100).toFixed(1)}% ≥ ${autoAccept * 100}%): ${terminalCommand}`);
 					return;
-				} else if (typeof confidence === 'number' && confidence >= confirm) {
-					vscode.window.showInformationMessage(`[NLC DEBUG] Confirmation dialog should appear now for terminal command: ${terminalCommand} (confidence ${(confidence * 100).toFixed(1)}%)`);
-					const confirmMsg = `Run terminal command \"${terminalCommand}\"? (confidence ${(confidence * 100).toFixed(1)}%)`;
-					let ok = await vscode.window.showInformationMessage(confirmMsg, { modal: true }, 'Yes');
-					if (ok === undefined) {
-						vscode.window.showWarningMessage('[NLC DEBUG] Modal confirmation dialog did not appear or was dismissed. Trying non-modal prompt.');
-						ok = await vscode.window.showInformationMessage(confirmMsg, 'Yes');
-					}
-					if (ok === 'Yes') {
-						let terminal = vscode.window.activeTerminal;
-						if (!terminal) {
-							terminal = vscode.window.createTerminal('NLC Terminal');
-						}
-						terminal.show();
-						terminal.sendText(terminalCommand, true);
-						vscode.window.showInformationMessage(`Terminal command executed: ${terminalCommand}`);
-					} else {
-						vscode.window.showInformationMessage('Terminal command cancelled or no confirmation given.');
-					}
-					return;
 				}
-				// Otherwise, fall through to alternatives logic below
 			}
 
 			// Check alternatives for VoiceLauncher SQL workflow intent and terminal commands

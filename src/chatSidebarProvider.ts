@@ -1,6 +1,40 @@
 import * as vscode from 'vscode';
 import { detectProjectType, getTestCommandForProject, getBuildCommandForProject } from './projectTypeUtils';
 
+/**
+ * Checks if a terminal command is potentially dangerous and should always require confirmation.
+ * @param command The terminal command to check
+ * @returns true if the command is potentially dangerous
+ */
+function isDangerousCommand(command: string): boolean {
+	const lowerCmd = command.toLowerCase().trim();
+	
+	// Patterns for dangerous commands (both Unix and Windows)
+	const dangerousPatterns = [
+		/^rm\s+(-[rf]+\s+)?[\/*]/i,           // rm, rm -rf
+		/^del\s+/i,                            // Windows del
+		/^rmdir\s+/i,                          // rmdir
+		/^rd\s+/i,                             // Windows rd
+		/^format\s+/i,                         // format disk
+		/^diskpart/i,                          // Windows diskpart
+		/^shutdown/i,                          // shutdown
+		/^reboot/i,                            // reboot
+		/^poweroff/i,                          // poweroff
+		/^halt/i,                              // halt
+		/^init\s+[06]/i,                       // init 0/6
+		/^Remove-Item\s+/i,                    // PowerShell Remove-Item
+		/^Clear-Host/i,                        // PowerShell Clear-Host (less dangerous but still)
+		/^dd\s+if=/i,                          // dd command
+		/^mkfs/i,                              // make filesystem
+		/^fdisk/i,                             // fdisk
+		/^parted/i,                            // parted
+		/\|\s*sudo\s+/i,                       // anything piped to sudo
+		/^sudo\s+(rm|del|format|dd|mkfs)/i    // sudo with dangerous commands
+	];
+	
+	return dangerousPatterns.some(pattern => pattern.test(lowerCmd));
+}
+
 export class ChatSidebarProvider implements vscode.WebviewViewProvider {
     private pendingConfirmation: null | {
         type: 'command' | 'terminal',
@@ -279,12 +313,18 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                 const thresholds = config.get<{ autoAccept: number; confirm: number }>('naturalLanguageCommands.confidenceThresholds', { autoAccept: 0.9, confirm: 0.7 });
                 const autoAccept = typeof thresholds.autoAccept === 'number' ? thresholds.autoAccept : 0.9;
                 const confirm = typeof thresholds.confirm === 'number' ? thresholds.confirm : 0.7;
+                // Read terminal command confirmation setting
+                const alwaysConfirmTerminal = config.get<boolean>('naturalLanguageCommands.alwaysConfirmTerminalCommands', true);
 
                 // DEBUG: Log confidence and thresholds
                 // (DEBUG removed)
                 if ((hasCommand || hasTerminal) && typeof confidence === 'number') {
-                    if (autoAccept < 1 && confidence >= autoAccept) {
-                        // Only auto-execute if autoAccept is less than 1
+                    // Check if this is a terminal command that requires confirmation
+                    const isTerminalDangerous = hasTerminal && isDangerousCommand(llmResult.terminal || '');
+                    const terminalNeedsConfirm = hasTerminal && (alwaysConfirmTerminal || isTerminalDangerous);
+                    
+                    if (autoAccept < 1 && confidence >= autoAccept && !terminalNeedsConfirm) {
+                        // Only auto-execute if autoAccept is less than 1 and terminal doesn't need confirmation
                         if (hasCommand) {
                             vscode.commands.executeCommand(llmResult.command!);
                             reply += `\n✅ Auto-executed VS Code command: ${llmResult.command}`;
@@ -298,11 +338,12 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                             reply += `\n✅ Auto-executed terminal command: ${llmResult.terminal}`;
                         }
                         this._sendMessageToWebview('addMessage', { role: 'assistant', content: reply.trim() });
-                    } else if (confidence >= confirm || autoAccept === 1) {
+                    } else if (confidence >= confirm || autoAccept === 1 || terminalNeedsConfirm) {
                         // If autoAccept is 1, always ask for confirmation, never auto-execute
+                        // Also ask if terminal command needs confirmation due to settings or dangerous patterns
                         // Ask for confirmation in chat ONLY, do not execute or send summary
                         let confirmMsg = '';
-                        if (hasCommand) {
+                        if (hasCommand && !terminalNeedsConfirm) {
                             confirmMsg = `Do you want to run this command? (yes/no)\nVS Code Command: ${llmResult.command}\nConfidence: ${(confidence * 100).toFixed(1)}%`;
                             this.pendingConfirmation = { type: 'command', value: llmResult.command!, replyPrefix: reply.trim() };
                         } else if (hasTerminal) {
