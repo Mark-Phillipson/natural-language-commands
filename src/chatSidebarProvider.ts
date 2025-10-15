@@ -301,8 +301,8 @@ export class ChatSidebarProvider implements vscode.WebviewViewProvider {
                 // DEBUG: Log confidence and thresholds
                 // (DEBUG removed)
                 if ((hasCommand || hasTerminal) && typeof confidence === 'number') {
-                    if (autoAccept < 1 && confidence >= autoAccept) {
-                        // Only auto-execute if autoAccept is less than 1
+                    if (autoAccept < 1 && confidence > autoAccept) {
+                        // Only auto-execute if confidence is strictly greater than autoAccept
                         if (hasCommand) {
                             try {
                                 if (llmResult.command && llmResult.command.startsWith('editor.')) {
