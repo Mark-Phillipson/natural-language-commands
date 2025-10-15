@@ -696,6 +696,19 @@ export function activate(context: vscode.ExtensionContext) {
 			// If parsed.terminal is present, handle according to confidence thresholds
 			if (parsed.terminal && typeof parsed.terminal === 'string' && parsed.terminal.trim().length > 0) {
 				let terminalCommand = parsed.terminal.trim();
+				// Always confirm before running terminal commands if setting is enabled
+				const alwaysConfirmTerminalCommands = config.get<boolean>('naturalLanguageCommands.alwaysConfirmTerminalCommands', false);
+				if (alwaysConfirmTerminalCommands) {
+					const confirm = await vscode.window.showWarningMessage(
+						`Are you sure you want to run this terminal command?\n\n${terminalCommand}`,
+						{ modal: true },
+						'Yes', 'No'
+					);
+					if (confirm !== 'Yes') {
+						vscode.window.showInformationMessage('Terminal command cancelled.');
+						return;
+					}
+				}
 				// If the user wants to cancel/stop/interrupt a running process, try to send Ctrl+C
 				if (/^(ctrl\+c|cancel|stop|interrupt|terminate|kill|shut ?down|abort|break)( running)?( command| process| task| job| terminal)?/i.test(terminalCommand)) {
 					await trySendCtrlC();
