@@ -138,12 +138,21 @@ This extension requires a valid OpenAI API key to function. You can provide your
 This extension can be used in conjunction with [Talon Voice](https://talonvoice.com/) to further enhance your workflow with hands-free, voice-driven commands in VS Code.
 
 ## 📝 Release Notes
-### 1.0.0
-Initial release with core features and simulated menus.
+### Unreleased
+#### Added
+- Simulated menus for File, Edit, Selection, View, Go, Run, Terminal, and Help (QuickPick UI)
+- Sidebar/activity bar navigation with "Show all sidebars"
+- Command history and example commands sidebar views
+- PowerShell translation for terminal commands
+- Status bar alert icon for notifications
+- Confirmation and alternatives for low-confidence actions
+- Support for OpenAI model selection and debug mode
+- New commands for menu simulation, history, and examples
 
-## ℹ️ For more information
+#### Changed
+- Updated documentation to reflect new features and commands
+- Improved error handling and user feedback
 
-- [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-- [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+#### Fixed
+- Various bug fixes and stability improvements
 
-**Enjoy!**
