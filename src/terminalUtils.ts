@@ -13,7 +13,7 @@ function translateTerminalCommandForOS(cmd: string): string {
     }
     // ls -d */ (list only directories) - must come before general ls check
     if (/^ls\s+-d\s+\*\/?$/i.test(trimmed)) {
-        return 'Get-ChildItem -Directory -Recurse';
+        return 'Get-ChildItem -Directory';
     }
     // list directories, list folders, show directories, show folders (with optional recursive flag)
     if (/^(list|show)\s+(all\s+)?(directories|folders|dirs)(\s+recursively)?$/i.test(trimmed)) {
