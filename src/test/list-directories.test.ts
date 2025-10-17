@@ -29,10 +29,18 @@ suite('translateTerminalCommandForOS list directories', () => {
         const result = translateTerminalCommandForOS('ls -d */');
         assert.strictEqual(result, 'Get-ChildItem -Directory -Recurse');
     });
-    test('should not translate on non-Windows', () => {
+});
+
+suite('translateTerminalCommandForOS list directories (non-Windows)', () => {
+    const originalPlatform = process.platform;
+    setup(() => {
         Object.defineProperty(process, 'platform', { value: 'linux' });
-        const result = translateTerminalCommandForOS('list directories recursively');
+    });
+    teardown(() => {
         Object.defineProperty(process, 'platform', { value: originalPlatform });
+    });
+    test('should not translate on non-Windows', () => {
+        const result = translateTerminalCommandForOS('list directories recursively');
         assert.strictEqual(result, 'list directories recursively');
     });
 });
