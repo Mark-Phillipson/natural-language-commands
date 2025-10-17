@@ -62,7 +62,7 @@ This guide explains how to package, install, and publish your VS Code extension 
    ```
 3. **Publish the extension:**
    ```pwsh
-   vsce publish
+   vsce publish minor
    ```
    - The first time, you’ll be prompted for a Personal Access Token (PAT) from Azure DevOps ([generate here](https://dev.azure.com)).
 4. **Verify your extension** on the [Marketplace](https://marketplace.visualstudio.com/vscode).
