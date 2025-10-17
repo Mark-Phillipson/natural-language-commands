@@ -13,9 +13,12 @@ This extension is designed to make VS Code more accessible and productive for ev
 
 Created by Mark Phillipson
 
+**Marketplace Category:** `Chat`
+
 This extension lets you run VS Code commands using natural language. It integrates with OpenAI models (default: gpt-4o) to interpret your requests and map them to editor actions, simulated menus, and terminal commands.
 
 ## ✨ Features
+* Categorized under **Chat** in the VS Code Marketplace for easy discovery
 - 🗣️ Run VS Code or terminal commands using plain English
 - 🗂️ Simulated menus for File, Edit, Selection, View, Go, Run, Terminal, and Help (via QuickPick)
 - 🧭 Sidebar and activity bar navigation (including custom sidebars)
