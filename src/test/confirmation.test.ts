@@ -31,7 +31,7 @@ suite('Confirmation Dialog Tests', () => {
         
         // Verify message format includes command
         assert.ok(expectedMsg.includes(terminalCommand), 'Confirmation message should include the terminal command');
-        assert.ok(expectedMsg.includes('Run terminal command'), 'Confirmation message should specify it\'s a terminal command');
+        assert.ok(expectedMsg.includes('Run terminal command'), 'Confirmation message should specify it is a terminal command');
     });
 
     test('Alternative command confirmation includes the actual command', () => {
@@ -168,18 +168,19 @@ suite('Confirmation Dialog Tests', () => {
     test('Confidence threshold affects confirmation behavior', () => {
         // Test that confidence levels determine if confirmation is shown
         const testScenarios = [
-            { confidence: 0.95, autoAccept: 0.9, shouldAutoExecute: true },
-            { confidence: 0.85, autoAccept: 0.9, shouldAutoExecute: false },
-            { confidence: 0.95, autoAccept: 1.0, shouldAutoExecute: false }, // Always confirm when autoAccept is 1
-            { confidence: 0.5, autoAccept: 0.9, shouldAutoExecute: false }
+            { confidence: 0.95, autoAccept: 0.9, expectConfirm: false, description: 'High confidence with autoAccept < 1 should auto-execute' },
+            { confidence: 0.85, autoAccept: 0.9, expectConfirm: true, description: 'Medium confidence below autoAccept should confirm' },
+            { confidence: 0.95, autoAccept: 1.0, expectConfirm: true, description: 'Any confidence with autoAccept = 1 should always confirm' },
+            { confidence: 0.5, autoAccept: 0.9, expectConfirm: true, description: 'Low confidence should confirm or show alternatives' }
         ];
 
         testScenarios.forEach(scenario => {
+            // Logic: If autoAccept >= 1, always confirm. Otherwise, confirm if confidence < autoAccept
             const shouldConfirm = scenario.autoAccept >= 1 || scenario.confidence < scenario.autoAccept;
             assert.strictEqual(
-                !scenario.shouldAutoExecute, 
-                shouldConfirm,
-                `Confidence ${scenario.confidence} with autoAccept ${scenario.autoAccept} should ${shouldConfirm ? 'confirm' : 'auto-execute'}`
+                shouldConfirm, 
+                scenario.expectConfirm,
+                scenario.description
             );
         });
     });
