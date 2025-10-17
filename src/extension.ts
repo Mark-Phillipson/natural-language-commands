@@ -797,24 +797,37 @@ export function activate(context: vscode.ExtensionContext) {
 								const selected = pick.alt;
 								if (selected.command && selected.command.trim().length > 0) {
 									const trimmed = selected.command.trim();
-									vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
-									const result = await vscode.commands.executeCommand(trimmed);
-									if (result !== undefined) {
-										vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+									// Always confirm before executing alternative command
+									const confirmMsg = `Run command \"${trimmed}\"?`;
+									const ok = await vscode.window.showInformationMessage(confirmMsg, { modal: true }, 'Yes', 'No');
+									if (ok === 'Yes') {
+										const result = await vscode.commands.executeCommand(trimmed);
+										if (result !== undefined) {
+											vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+										} else {
+											vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+										}
 									} else {
-										vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+										vscode.window.showInformationMessage('Command cancelled.');
 									}
 									return;
 								} else if (selected.terminal && selected.terminal.trim().length > 0) {
 									let trimmed = selected.terminal.trim();
-									   trimmed = translateTerminalCommandForOS(trimmed);
-									let terminal = vscode.window.activeTerminal;
-									if (!terminal) {
-										terminal = vscode.window.createTerminal('NLC Terminal');
+									trimmed = translateTerminalCommandForOS(trimmed);
+									// Always confirm before executing alternative terminal command
+									const confirmMsg = `Run terminal command \"${trimmed}\"?`;
+									const ok = await vscode.window.showWarningMessage(confirmMsg, { modal: true }, 'Yes', 'No');
+									if (ok === 'Yes') {
+										let terminal = vscode.window.activeTerminal;
+										if (!terminal) {
+											terminal = vscode.window.createTerminal('NLC Terminal');
+										}
+										terminal.show();
+										terminal.sendText(trimmed, true);
+										vscode.window.showInformationMessage(`Terminal command executed: ${trimmed}`);
+									} else {
+										vscode.window.showInformationMessage('Terminal command cancelled.');
 									}
-									terminal.show();
-									terminal.sendText(trimmed, true);
-									vscode.window.showInformationMessage(`Running in terminal: ${trimmed}`);
 									return;
 								}
 							}
@@ -935,6 +948,10 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 			const confidence = parsed.confidence;
 			const altCommands = parsed.alternatives;
+			// Read confidence thresholds from config
+			const thresholds = config.get<{ autoAccept: number; confirm: number }>('naturalLanguageCommands.confidenceThresholds', { autoAccept: 0.9, confirm: 0.7 });
+			const autoAccept = typeof thresholds.autoAccept === 'number' ? thresholds.autoAccept : 0.9;
+			const confirm = typeof thresholds.confirm === 'number' ? thresholds.confirm : 0.7;
 
 			   // Always use custom sidebar picker for sidebar-related requests
 			   const sidebarMapped = mapSidebarCommand(userInput);
@@ -943,30 +960,58 @@ export function activate(context: vscode.ExtensionContext) {
 				   await vscode.commands.executeCommand('nlc.showSidebars');
 				   return;
 			   }
-			   // If parsed.command is present, execute it directly
+			   // If parsed.command is present, handle with confirmation based on confidence
 			   if (parsed.command && typeof parsed.command === 'string' && parsed.command.trim().length > 0) {
 				   const trimmed = parsed.command.trim();
-				   vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
-				   const result = await vscode.commands.executeCommand(trimmed);
-				   if (result !== undefined) {
-					   vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+				   // Check confidence and show confirmation if needed
+				   if (autoAccept < 1 && typeof confidence === 'number' && confidence >= autoAccept) {
+					   // Auto-execute for high confidence
+					   vscode.window.showInformationMessage(`Auto-executing command (confidence ${(confidence * 100).toFixed(1)}% ≥ ${autoAccept * 100}%): ${trimmed}`);
+					   const result = await vscode.commands.executeCommand(trimmed);
+					   if (result !== undefined) {
+						   vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+					   } else {
+						   vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+					   }
 				   } else {
-					   vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+					   // Always confirm for medium/low confidence or when autoAccept is 1
+					   const confirmMsg = `Run command \"${trimmed}\"?${typeof confidence === 'number' ? ` (confidence ${(confidence * 100).toFixed(1)}%)` : ''}`;
+					   const ok = await vscode.window.showInformationMessage(confirmMsg, { modal: true }, 'Yes', 'No');
+					   if (ok === 'Yes') {
+						   const result = await vscode.commands.executeCommand(trimmed);
+						   if (result !== undefined) {
+							   vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+						   } else {
+							   vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+						   }
+					   } else {
+						   vscode.window.showInformationMessage('Command cancelled.');
+					   }
 				   }
 				   return;
 			   }
 
-			// If parsed.terminal is present, run it in the integrated terminal
+			// If parsed.terminal is present, run it with confirmation
 			if (parsed.terminal && typeof parsed.terminal === 'string' && parsed.terminal.trim().length > 0) {
 				let terminalCommand = parsed.terminal.trim();
-				   terminalCommand = translateTerminalCommandForOS(terminalCommand);
+				terminalCommand = translateTerminalCommandForOS(terminalCommand);
+				// Always confirm terminal commands in .new handler for safety
+				const alwaysConfirmTerminalCommands = config.get<boolean>('naturalLanguageCommands.alwaysConfirmTerminalCommands', true);
+				if (alwaysConfirmTerminalCommands || autoAccept >= 1) {
+					const confirmMsg = `Run terminal command \"${terminalCommand}\"?`;
+					const ok = await vscode.window.showWarningMessage(confirmMsg, { modal: true }, 'Yes', 'No');
+					if (ok !== 'Yes') {
+						vscode.window.showInformationMessage('Terminal command cancelled.');
+						return;
+					}
+				}
 				let terminal = vscode.window.activeTerminal;
 				if (!terminal) {
 					terminal = vscode.window.createTerminal('NLC Terminal');
 				}
 				terminal.show();
 				terminal.sendText(terminalCommand, true);
-				vscode.window.showInformationMessage(`Running in terminal: ${terminalCommand}`);
+				vscode.window.showInformationMessage(`Terminal command executed: ${terminalCommand}`);
 				return;
 			}
 
@@ -995,23 +1040,37 @@ export function activate(context: vscode.ExtensionContext) {
 					const selected = pick.alt;
 					if (selected.command && selected.command.trim().length > 0) {
 						const trimmed = selected.command.trim();
-						vscode.window.showInformationMessage(`Executing command: ${trimmed}`);
-						const result = await vscode.commands.executeCommand(trimmed);
-						if (result !== undefined) {
-							vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+						// Always confirm before executing alternative command
+						const confirmMsg = `Run command \"${trimmed}\"?`;
+						const ok = await vscode.window.showInformationMessage(confirmMsg, { modal: true }, 'Yes', 'No');
+						if (ok === 'Yes') {
+							const result = await vscode.commands.executeCommand(trimmed);
+							if (result !== undefined) {
+								vscode.window.showInformationMessage(`Command executed successfully: ${trimmed}`);
+							} else {
+								vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+							}
 						} else {
-							vscode.window.showWarningMessage(`Command not found or failed: ${trimmed}`);
+							vscode.window.showInformationMessage('Command cancelled.');
 						}
 						return;
 					} else if (selected.terminal && selected.terminal.trim().length > 0) {
-						const trimmed = selected.terminal.trim();
-						let terminal = vscode.window.activeTerminal;
-						if (!terminal) {
-							terminal = vscode.window.createTerminal('NLC Terminal');
+						let trimmed = selected.terminal.trim();
+						trimmed = translateTerminalCommandForOS(trimmed);
+						// Always confirm before executing alternative terminal command
+						const confirmMsg = `Run terminal command \"${trimmed}\"?`;
+						const ok = await vscode.window.showWarningMessage(confirmMsg, { modal: true }, 'Yes', 'No');
+						if (ok === 'Yes') {
+							let terminal = vscode.window.activeTerminal;
+							if (!terminal) {
+								terminal = vscode.window.createTerminal('NLC Terminal');
+							}
+							terminal.show();
+							terminal.sendText(trimmed, true);
+							vscode.window.showInformationMessage(`Terminal command executed: ${trimmed}`);
+						} else {
+							vscode.window.showInformationMessage('Terminal command cancelled.');
 						}
-						terminal.show();
-						terminal.sendText(trimmed, true);
-						vscode.window.showInformationMessage(`Running in terminal: ${trimmed}`);
 						return;
 					}
 				}
