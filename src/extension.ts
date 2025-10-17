@@ -540,6 +540,41 @@ export function activate(context: vscode.ExtensionContext) {
 			const debugShowRaw = config.get<boolean>('naturalLanguageCommands.debugShowRawResponse', false);
 			const start = Date.now();
 			const parsed = await getLLMResult(apiKey, userInput, model);
+			// Special handling for 'delete current document' intent or command
+			const deleteIntentRegex = /delete (the )?(current|active) (document|file|editor)/i;
+			if (
+				(parsed.intent && deleteIntentRegex.test(parsed.intent)) ||
+				(parsed.command && deleteIntentRegex.test(parsed.command)) ||
+				deleteIntentRegex.test(userInput)
+			) {
+				const editor = vscode.window.activeTextEditor;
+				if (editor && editor.document && editor.document.uri.scheme === 'file') {
+					const uri = editor.document.uri;
+					const confirmMsg = `Are you sure you want to delete the current file?\n${uri.fsPath}`;
+					const ok = await vscode.window.showWarningMessage(confirmMsg, { modal: true }, 'Delete');
+					if (ok === 'Delete') {
+						const edit = new vscode.WorkspaceEdit();
+						edit.deleteFile(uri, { ignoreIfNotExists: true });
+						const success = await vscode.workspace.applyEdit(edit);
+						if (success) {
+							vscode.window.showInformationMessage(`Deleted file: ${uri.fsPath}`);
+							// Add to command history node
+							commandHistoryProvider.addCommand({
+								label: `Delete file: ${uri.fsPath}`,
+								time: new Date(),
+								parameters: uri.fsPath
+							});
+						} else {
+							vscode.window.showErrorMessage(`Failed to delete file: ${uri.fsPath}`);
+						}
+					} else {
+						vscode.window.showInformationMessage('File deletion cancelled.');
+					}
+				} else {
+					vscode.window.showWarningMessage('No active file to delete, or file is not on disk.');
+				}
+				return;
+			}
 			// Debugging menu trigger by intent or command
 			if (parsed && (/(debugging commands|show debugging commands|debug menu|show debug menu|debugging actions|debug actions)/i.test(userInput) || /(debugging commands|debug menu)/i.test(parsed.intent || '') || /(debugging commands|debug menu)/i.test(parsed.command || ''))) {
 				await vscode.commands.executeCommand('natural-language-commands.debugMenu');

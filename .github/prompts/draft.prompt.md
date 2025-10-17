@@ -1,0 +1,3 @@
+After requesting through the command palette to delete the current document we got this response in the terminal as per the screenshot this was not expected or ever going to work can we fix this so we either issue a Visual Studio command to delete the current document or some kind of workaround and we don't want to issue a terminal command that will never work as in this case.
+
+  please can you generate the commandline to create the issue for this problem and insist on writing tests for when this happens again and make sure all tests pass before the issue can be resolved.
