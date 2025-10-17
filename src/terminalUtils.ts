@@ -11,12 +11,16 @@ function translateTerminalCommandForOS(cmd: string): string {
     if (/^(go up( one)? level|go to parent( directory)?|up one level|parent directory)$/i.test(trimmed)) {
         return 'cd ..';
     }
+    // ls -d */ (list only directories) - must come before general ls check
+    if (/^ls\s+-d\s+\*\/?$/i.test(trimmed)) {
+        return 'Get-ChildItem -Directory -Recurse';
+    }
+    // list directories, list folders, show directories, show folders (with optional recursive flag)
+    if (/^(list|show)\s+(all\s+)?(directories|folders|dirs)(\s+recursively)?$/i.test(trimmed)) {
+        return 'Get-ChildItem -Directory -Recurse';
+    }
     // Any ls command with any flags or extra spaces → dir
     if (/^ls(\s+(-[a-zA-Z]+))*\s*$/i.test(trimmed) || /^ls(\s+[^|]*)?$/i.test(trimmed)) {
-        return 'dir';
-    }
-    // ls -d */ or ls -d .*/ (list only directories)
-    if (/^ls\s+-d\s+\*\/?$/i.test(trimmed) || /^ls\s+-d\s+\.\*\/?$/i.test(trimmed)) {
         return 'dir';
     }
     // cat file.txt → Get-Content file.txt
