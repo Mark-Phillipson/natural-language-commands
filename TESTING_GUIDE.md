@@ -133,12 +133,14 @@ This guide explains how to manually test the confirmation display feature to ens
 2. Set `naturalLanguageCommands.alwaysConfirmTerminalCommands` to `false`
 3. Run command: `NLC: Run Command...`
 4. Enter: "run npm test"
-5. Expected: If confidence >= autoAccept, command might auto-execute
-6. Verify: Even in auto-execute, the command is shown in the message
+5. If confidence >= autoAccept (default 0.9): Command will auto-execute with info message showing the command
+6. If confidence < autoAccept: Confirmation dialog will appear
+7. Verify: The command is always shown either in confirmation or info message
 
 **Expected Results:**
-- High-confidence terminal commands may auto-execute
-- Command is still displayed in the info message
+- High-confidence terminal commands (>= autoAccept threshold) will auto-execute
+- Info message displays: `Auto-executing terminal command: npm test`
+- Low-confidence terminal commands still show confirmation dialog
 
 ## Verification Checklist
 
@@ -155,10 +157,24 @@ For each test scenario, verify:
 
 ## Common Issues to Watch For
 
-1. **Missing Command in Dialog**: If confirmation doesn't show the command, this is a bug
-2. **Wrong Command Displayed**: Command should match what will actually execute
-3. **No Confirmation When Expected**: Check confidence thresholds and settings
-4. **Auto-Execute When Should Confirm**: Check autoAccept threshold setting
+1. **Missing Command in Dialog**: 
+   - ❌ BAD: Dialog shows "Run command?" without the command name
+   - ✅ GOOD: Dialog shows `Run command "workbench.action.files.save"?`
+   - If confirmation doesn't include the command name in quotes, this is a bug
+
+2. **Wrong Command Displayed**: 
+   - Command in dialog should exactly match what will be executed
+   - For terminal commands on Windows, should show translated command (e.g., "dir" not "ls")
+
+3. **No Confirmation When Expected**: 
+   - Check confidence thresholds and settings
+   - If autoAccept < 1 and confidence >= autoAccept, commands auto-execute (by design)
+   - If autoAccept = 1, all commands should show confirmation
+
+4. **Auto-Execute When Should Confirm**: 
+   - Check autoAccept threshold setting
+   - Default is 0.9, so 90%+ confidence auto-executes VS Code commands
+   - Terminal commands always confirm when `alwaysConfirmTerminalCommands` is true (default)
 
 ## Automated Tests
 
