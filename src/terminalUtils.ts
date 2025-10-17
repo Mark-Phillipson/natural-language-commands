@@ -11,12 +11,13 @@ function translateTerminalCommandForOS(cmd: string): string {
     if (/^(go up( one)? level|go to parent( directory)?|up one level|parent directory)$/i.test(trimmed)) {
         return 'cd ..';
     }
+    // ls -d */ or ls -d .*/ (list only directories)
+    // Also match variations like "ls -d", "ls -d *", etc.
+    if (/^ls\s+-d(\s+\*\/?)?$/i.test(trimmed) || /^ls\s+-d\s+\.\*\/?$/i.test(trimmed)) {
+        return 'Get-ChildItem -Directory';
+    }
     // Any ls command with any flags or extra spaces → dir
     if (/^ls(\s+(-[a-zA-Z]+))*\s*$/i.test(trimmed) || /^ls(\s+[^|]*)?$/i.test(trimmed)) {
-        return 'dir';
-    }
-    // ls -d */ or ls -d .*/ (list only directories)
-    if (/^ls\s+-d\s+\*\/?$/i.test(trimmed) || /^ls\s+-d\s+\.\*\/?$/i.test(trimmed)) {
         return 'dir';
     }
     // cat file.txt → Get-Content file.txt
