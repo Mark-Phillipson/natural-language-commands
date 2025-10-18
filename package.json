@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/Mark-Phillipson/natural-language-commands.git"
   },
-  "version": "1.11.0",
+  "version": "1.12.0",
   "engines": {
     "vscode": "^1.54.0"
   },
