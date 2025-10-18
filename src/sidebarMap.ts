@@ -7,38 +7,38 @@ export function mapSidebarCommand(input: string): string | undefined {
   console.log('[NLC DEBUG] mapSidebarCommand lower:', input.toLowerCase());
   const lower = input.toLowerCase();
   if (/(please )?(show|list|display|see|focus|open|choose|switch)( all)?( my)? sidebars?( list)?( picker)?/.test(lower)) {
-    return 'natural-language-commands.showSidebars';
+    return 'nlc.showSidebars';
   }
   // Catch-all: if the phrase contains 'sidebar' or 'sidebars', show the picker
   if (lower.includes('sidebar')) {
-    return 'natural-language-commands.showSidebars';
+    return 'nlc.showSidebars';
   }
-  if (/(open edit menu|show edit menu|edit menu|focus edit menu|edit top menu|edit dropdown)/.test(lower)) {
-    return 'natural-language-commands.editMenu';
+  if (/(open (?:the )?edit menu|show (?:the )?edit menu|(?:the )?edit menu|focus (?:the )?edit menu|edit top menu|edit dropdown)/.test(lower)) {
+    return 'nlc.editMenu';
   }
-  if (/(open selection menu|show selection menu|selection menu|focus selection menu|selection top menu|selection dropdown)/.test(lower)) {
-    return 'natural-language-commands.selectionMenu';
+  if (/(open (?:the )?selection menu|show (?:the )?selection menu|(?:the )?selection menu|focus (?:the )?selection menu|selection top menu|selection dropdown)/.test(lower)) {
+    return 'nlc.selMenu';
   }
-  if (/(open view menu|show view menu|view menu|focus view menu|view top menu|view dropdown)/.test(lower)) {
-    return 'natural-language-commands.viewMenu';
+  if (/(open (?:the )?view menu|show (?:the )?view menu|(?:the )?view menu|focus (?:the )?view menu|view top menu|view dropdown)/.test(lower)) {
+    return 'nlc.viewMenu';
   }
-  if (/(open go menu|show go menu|go menu|focus go menu|go top menu|go dropdown)/.test(lower)) {
-    return 'natural-language-commands.goMenu';
+  if (/(open (?:the )?go menu|show (?:the )?go menu|(?:the )?go menu|focus (?:the )?go menu|go top menu|go dropdown)/.test(lower)) {
+    return 'nlc.goMenu';
   }
-  if (/(open run menu|show run menu|run menu|focus run menu|run top menu|run dropdown)/.test(lower)) {
-    return 'natural-language-commands.runMenu';
+  if (/(open (?:the )?run menu|show (?:the )?run menu|(?:the )?run menu|focus (?:the )?run menu|run top menu|run dropdown)/.test(lower)) {
+    return 'nlc.runMenu';
   }
-  if (/(open help menu|show help menu|help menu|focus help menu|help top menu|help dropdown)/.test(lower)) {
-    return 'natural-language-commands.helpMenu';
+  if (/(open (?:the )?help menu|show (?:the )?help menu|(?:the )?help menu|focus (?:the )?help menu|help top menu|help dropdown)/.test(lower)) {
+    return 'nlc.helpMenu';
   }
   if (/(open (?:the )?file menu|show (?:the )?file menu|(?:the )?file menu|focus (?:the )?file menu|file dropdown|file top menu)/.test(lower)) {
-  return 'nlc.fileMenu';
+    return 'nlc.fileMenu';
   }
-  if (/(open (the )?terminal menu( on the top)?|show (the )?terminal menu( on the top)?|terminal menu( on the top)?|focus (the )?terminal menu( on the top)?|terminal dropdown|terminal top menu|top terminal menu|terminal menu at the top|the terminal menu on the top)/.test(lower)) {
-    return 'natural-language-commands.terminalMenu';
+  if (/(open (?:the )?terminal menu( on the top)?|show (?:the )?terminal menu( on the top)?|(?:the )?terminal menu( on the top)?|focus (?:the )?terminal menu( on the top)?|terminal dropdown|terminal top menu|top terminal menu|terminal menu at the top|the terminal menu on the top)/.test(lower)) {
+    return 'nlc.termMenu';
   }
-  if (/(what can i say|examples|show examples|help|show help|show natural commands|show natural language commands|show command examples)/.test(lower)) {
-    return 'natural-language-commands.examples';
+  if (/(what can i say|examples|show examples|(?:the )?help|show (?:the )?help|show natural commands|show natural language commands|show command examples)/.test(lower)) {
+  return 'natural-language-commands.examples';
   }
   if (/(command history|history sidebar|show command history|see command history|open command history|nlc history|natural language command history)/.test(lower)) {
     return 'commandHistory.focus';

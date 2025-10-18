@@ -22,7 +22,8 @@
   ],
   "activationEvents": [
     "onCommand:natural-language-commands.run",
-    "onCommand:natural-language-commands.new"
+    "onCommand:natural-language-commands.new",
+    "onCommand:nlc.termMenu"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -94,6 +95,11 @@
       {
         "command": "nlc.fileMenu",
         "title": "File Menu",
+        "category": "NLC"
+      },
+      {
+        "command": "nlc.termMenu",
+        "title": "Terminal Menu",
         "category": "NLC"
       }
     ],

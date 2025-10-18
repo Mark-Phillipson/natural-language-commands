@@ -466,6 +466,24 @@ export function activate(context: vscode.ExtensionContext) {
 			return text.replace(/^\s*please\s*[,:]?\s*/i, '');
 		}
 	const trimmedInput = stripPleasePrefix(userInput.trim());
+		// Check for direct sidebar/menu command match BEFORE calling LLM
+		const mapped = mapSidebarCommand(trimmedInput);
+		if (mapped) {
+			// Check if the command is registered before executing
+			const allCommands = await vscode.commands.getCommands(true);
+			if (!allCommands.includes(mapped)) {
+				vscode.window.showWarningMessage(`[NLC SIDEBAR] Command mapped but not registered: ${mapped}`);
+				return;
+			}
+			vscode.window.showInformationMessage(`[NLC SIDEBAR] Direct command match: ${mapped}`);
+			const result = await vscode.commands.executeCommand(mapped);
+			if (result !== undefined) {
+				vscode.window.showInformationMessage(`[NLC SIDEBAR] Executed VS Code command: ${mapped}`);
+			} else {
+				vscode.window.showWarningMessage(`[NLC SIDEBAR] Command not found or failed: ${mapped}.`);
+			}
+			return; // Do NOT call LLM if we have a direct match
+		}
 	// Store last user input globally for fallback in pickers
 	globalThis.lastNLCUserInput = userInput;
 		// Special case: respond to "what can I say" directly in chat
@@ -890,18 +908,14 @@ export function activate(context: vscode.ExtensionContext) {
 			// Fallback: try to map sidebar/activity bar requests
 			const mapped = mapSidebarCommand(userInput);
 			if (mapped) {
-				vscode.window.showInformationMessage(`[NLC FALLBACK] Sidebar fallback triggered: ${mapped}`);
+				vscode.window.showInformationMessage(`[NLC SIDEBAR] Direct command match: ${mapped}`);
 				const result = await vscode.commands.executeCommand(mapped);
 				if (result !== undefined) {
-					vscode.window.showInformationMessage(`[NLC FALLBACK] Executed VS Code command (sidebar fallback): ${mapped}`);
+					vscode.window.showInformationMessage(`[NLC SIDEBAR] Executed VS Code command: ${mapped}`);
 				} else {
-					vscode.window.showWarningMessage(`[NLC FALLBACK] Command not found or failed: ${mapped}. Redirecting to chat for clarification.`);
-					await vscode.commands.executeCommand('workbench.action.focusView.nlcChatView');
-					await chatSidebarProvider.sendUserMessageToChat(userInput);
+					vscode.window.showWarningMessage(`[NLC SIDEBAR] Command not found or failed: ${mapped}.`);
 				}
-				return;
-			} else {
-				vscode.window.showInformationMessage('[NLC FALLBACK] Sidebar fallback not triggered. No mapping found.');
+				return; // Do NOT call LLM if we have a direct match
 			}
 
 			// If we reach here, the command was not recognized with high confidence.
