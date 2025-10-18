@@ -245,32 +245,39 @@ export function activate(context: vscode.ExtensionContext) {
 	// Register a command to show all sidebars and focus the selected one
        context.subscriptions.push(
 	       vscode.commands.registerCommand('nlc.showSidebars', async () => {
-		       const sidebars = [
-			       { label: 'Explorer', command: 'workbench.view.explorer' },
-			       { label: 'Source Control', command: 'workbench.view.scm' },
-			       { label: 'Run & Debug', command: 'workbench.view.debug' },
-			       { label: 'Extensions', command: 'workbench.view.extensions' },
-			       { label: 'Remote Explorer', command: 'workbench.view.remote' },
-			       { label: 'Testing', command: 'workbench.view.testing' },
-			       { label: 'Outline', command: 'outline.focus' },
-			       { label: 'Comments', command: 'workbench.panel.comments' },
-			       { label: 'Timeline', command: 'timeline.focus' },
-			       { label: 'Notebooks', command: 'notebook.focus' },
-			       { label: 'Cursorless', command: 'workbench.view.extension.cursorless' },
-		       ];
-		       const pick = await vscode.window.showQuickPick(sidebars, {
-			       placeHolder: 'Select a sidebar to focus:',
-			       canPickMany: false
-		       });
-		       if (pick && pick.command) {
-			       vscode.commands.executeCommand(pick.command);
-		       } else {
-			       vscode.window.showWarningMessage('No sidebar selected or sidebar picker was cancelled. Redirecting to chat for clarification.');
-			       await vscode.commands.executeCommand('nlc.focusChatTab');
-			       if (typeof globalThis.lastNLCUserInput === 'string') {
-				   await chatSidebarProvider.sendUserMessageToChat(globalThis.lastNLCUserInput);
-			       }
+	       const sidebars: (vscode.QuickPickItem & { command?: string })[] = [
+		       { label: 'Explorer', command: 'workbench.view.explorer' },
+		       { label: 'Source Control', command: 'workbench.view.scm' },
+		       { label: 'Run & Debug', command: 'workbench.view.debug' },
+		       { label: 'Extensions', command: 'workbench.view.extensions' },
+		       { label: 'Remote Explorer', command: 'workbench.view.remote' },
+		       { label: 'Testing', command: 'workbench.view.testing' },
+		       { label: 'Outline', command: 'outline.focus' },
+		       { label: 'Comments', command: 'workbench.panel.comments' },
+		       { label: 'Timeline', command: 'timeline.focus' },
+		       { label: 'Notebooks', command: 'notebook.focus' },
+		       { label: 'Cursorless', command: 'workbench.view.extension.cursorless' },
+		       { label: '', kind: vscode.QuickPickItemKind.Separator },
+		       {
+			       label: '$(extensions) See more sidebars in Extensions',
+			       description: 'Custom/installed sidebars may not appear above. To view or enable more, open the Extensions sidebar.',
+			       command: 'workbench.view.extensions',
+			       alwaysShow: true,
+			       detail: 'Click to open the Extensions sidebar and manage additional sidebars.'
 		       }
+	       ];
+	       const pick = await vscode.window.showQuickPick(sidebars, {
+		       placeHolder: 'Select a sidebar to focus:',
+		       canPickMany: false,
+		       title: 'Sidebar Picker'
+	       });
+	       if (pick && typeof pick === 'object' && 'command' in pick && pick.command) {
+		       vscode.commands.executeCommand(pick.command);
+	       } else if (pick) {
+		       vscode.window.showInformationMessage(`No command associated with selected item: ${pick.label}`);
+	       } else {
+		       vscode.window.showInformationMessage('No sidebar selected or sidebar picker was cancelled.');
+	       }
 	       })
        );
 	// Register a command to simulate the Terminal menu
