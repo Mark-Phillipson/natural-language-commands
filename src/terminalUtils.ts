@@ -1,9 +1,5 @@
 // Utility for translating Unix-style terminal commands to PowerShell/Windows equivalents
 function translateTerminalCommandForOS(cmd: string): string {
-    // cls (clear screen)
-    if (/^cls\s*$/i.test(trimmed)) {
-        return 'cls';
-    }
     const isWindows = process.platform === 'win32';
     if (!isWindows) {
         return cmd.trim();
@@ -11,10 +7,12 @@ function translateTerminalCommandForOS(cmd: string): string {
     let trimmed = cmd.trim();
     // Normalize multiple spaces to single space
     trimmed = trimmed.replace(/\s+/g, ' ');
+    // ...existing code...
     // Any plain 'ls' command (with any trailing spaces) → dir
     if (/^ls\s*$/i.test(trimmed)) {
         return 'dir';
     }
+    // ...existing code...
     // Natural language: go up one level, parent directory, etc.
     if (/^(go up( one)? level|go to parent( directory)?|up one level|parent directory)$/i.test(trimmed)) {
         return 'cd ..';

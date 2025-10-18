@@ -31,8 +31,8 @@ export function mapSidebarCommand(input: string): string | undefined {
   if (/(open help menu|show help menu|help menu|focus help menu|help top menu|help dropdown)/.test(lower)) {
     return 'natural-language-commands.helpMenu';
   }
-  if (/(open file menu|show file menu|file menu|focus file menu|file dropdown|file top menu)/.test(lower)) {
-    return 'natural-language-commands.fileMenu';
+  if (/(open (?:the )?file menu|show (?:the )?file menu|(?:the )?file menu|focus (?:the )?file menu|file dropdown|file top menu)/.test(lower)) {
+  return 'nlc.fileMenu';
   }
   if (/(open (the )?terminal menu( on the top)?|show (the )?terminal menu( on the top)?|terminal menu( on the top)?|focus (the )?terminal menu( on the top)?|terminal dropdown|terminal top menu|top terminal menu|terminal menu at the top|the terminal menu on the top)/.test(lower)) {
     return 'natural-language-commands.terminalMenu';

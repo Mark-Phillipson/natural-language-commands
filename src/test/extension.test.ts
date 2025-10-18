@@ -97,3 +97,27 @@ suite('Integration: terminal command translation in extension logic', () => {
         sinon.assert.calledWith(fakeTerminal.sendText, 'dir', true);
     });
 });
+suite('Simulated File Menu', () => {
+    test('should show QuickPick with file actions for "please open file menu"', async () => {
+        const vscode = require('vscode');
+        const sinon = require('sinon');
+        // Stub showQuickPick to capture actions
+        const quickPickStub = sinon.stub(vscode.window, 'showQuickPick').resolves({ label: 'New File', command: 'explorer.newFile' });
+        // Simulate command execution
+        await vscode.commands.executeCommand('nlc.fileMenu');
+        // Check QuickPick was called with expected actions
+        const expectedActions = [
+            { label: 'New File', command: 'explorer.newFile' },
+            { label: 'Open File...', command: 'workbench.action.files.openFile' },
+            { label: 'Open Folder...', command: 'workbench.action.files.openFolder' },
+            { label: 'Save', command: 'workbench.action.files.save' },
+            { label: 'Save As...', command: 'workbench.action.files.saveAs' },
+            { label: 'Save All', command: 'workbench.action.files.saveAll' },
+            { label: 'Close Editor', command: 'workbench.action.closeActiveEditor' },
+            { label: 'Close Folder', command: 'workbench.action.closeFolder' },
+            { label: 'Revert File', command: 'workbench.action.files.revert' }
+        ];
+        sinon.assert.calledWith(quickPickStub, expectedActions, sinon.match.object);
+        quickPickStub.restore();
+    });
+});

@@ -90,6 +90,11 @@
         "command": "commandHistory.deleteItem",
         "title": "Delete from History",
         "category": "NLC"
+      },
+      {
+        "command": "nlc.fileMenu",
+        "title": "File Menu",
+        "category": "NLC"
       }
     ],
     "menus": {
