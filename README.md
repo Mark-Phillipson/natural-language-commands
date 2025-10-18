@@ -1,6 +1,6 @@
 
 
-## ♿️ Accessibility & 🚀 Productivity
+## 🔓 Accessibility & 🚀 Productivity
 
 This extension is designed to make VS Code more accessible and productive for everyone:
 
@@ -19,35 +19,36 @@ This extension lets you run VS Code commands using natural language. It integrat
 
 ## ✨ Features
 * Categorized under **Chat** in the VS Code Marketplace for easy discovery
-- 🗣️ Run VS Code or terminal commands using plain English
-- 🗂️ Simulated menus for File, Edit, Selection, View, Go, Run, Terminal, and Help (via QuickPick)
-- 🧭 Sidebar and activity bar navigation (including custom sidebars)
-- 🕑 Command history sidebar
-- 🤖 Choose your preferred OpenAI model
-- 🐞 Debug mode to show raw LLM responses
-- 🔔 Status bar alert icon for notifications
-- 💻 PowerShell translation for terminal commands
-- ⚠️ Confirmation and alternatives for low-confidence actions
+* 🗣️ Run VS Code or terminal commands using plain English
+* 🗂️ Simulated menus for File, Edit, Selection, View, Go, Run, Terminal, and Help (via QuickPick)
+* 🧭 Sidebar and activity bar navigation (including custom sidebars)
+* 🕑 Command history sidebar
+* 🤖 Choose your preferred OpenAI model
+* 🐞 Debug mode to show raw LLM responses
+* 🔔 Status bar alert icon for notifications
+* 💻 PowerShell translation for terminal commands
+* ⚠️ Confirmation and alternatives for low-confidence actions
+* 🗑️ **File deletion via natural language always prompts for confirmation and logs the action in command history**
 
 ## 📝 Usage
-
 ### 💡 Example Natural Language Commands
-- "Open the file menu"
-- "Show the edit menu"
-- "Show all sidebars"
-- "Open the terminal and run my tests"
-- "Show command history sidebar"
-- "Find all TODO comments in the workspace"
-- "Open the explorer"
-- "Show me my extensions"
-- "Switch to the source control view"
-- "Open settings in JSON view"
-- "Create a new file called hello.txt"
-- "Show me the output panel"
-- "Run the build task"
-- "Show me the problems panel"
-- "Open the debug console"
-- "Clear the command history"
+* "Open the file menu"
+* "Show the edit menu"
+* "Show all sidebars"
+* "Open the terminal and run my tests"
+* "Show command history sidebar"
+* "Find all TODO comments in the workspace"
+* "Open the explorer"
+* "Show me my extensions"
+* "Switch to the source control view"
+* "Open settings in JSON view"
+* "Create a new file called hello.txt"
+* "Show me the output panel"
+* "Run the build task"
+* "Show me the problems panel"
+* "Open the debug console"
+* "Clear the command history"
+* "Delete the current document" *(will always prompt for confirmation and log the action in command history)*
 
 ### 🗂️ Simulated Menus
 Native top menus (File, Edit, Selection, View, Go, Run, Terminal, Help) cannot be opened directly. Instead, this extension provides simulated menus via QuickPick with common actions for each menu. Just say or type e.g. "open the file menu" or "show the edit menu".
