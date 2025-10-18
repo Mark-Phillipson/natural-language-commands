@@ -11,7 +11,7 @@ suite('translateTerminalCommandForOS', () => {
             assert.strictEqual(translateTerminalCommandForOS('ls'), 'dir');
             assert.strictEqual(translateTerminalCommandForOS('ls -la'), 'dir');
             assert.strictEqual(translateTerminalCommandForOS('ls    -a'), 'dir');
-            assert.strictEqual(translateTerminalCommandForOS('ls -d */'), 'dir');
+            assert.strictEqual(translateTerminalCommandForOS('ls -d */'), 'Get-ChildItem -Directory');
         } finally {
             Object.defineProperty(process, 'platform', { value: originalPlatform });
         }

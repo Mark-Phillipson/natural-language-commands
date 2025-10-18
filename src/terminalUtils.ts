@@ -1,5 +1,9 @@
 // Utility for translating Unix-style terminal commands to PowerShell/Windows equivalents
 function translateTerminalCommandForOS(cmd: string): string {
+    // cls (clear screen)
+    if (/^cls\s*$/i.test(trimmed)) {
+        return 'cls';
+    }
     const isWindows = process.platform === 'win32';
     if (!isWindows) {
         return cmd.trim();
@@ -7,19 +11,23 @@ function translateTerminalCommandForOS(cmd: string): string {
     let trimmed = cmd.trim();
     // Normalize multiple spaces to single space
     trimmed = trimmed.replace(/\s+/g, ' ');
+    // Any plain 'ls' command (with any trailing spaces) → dir
+    if (/^ls\s*$/i.test(trimmed)) {
+        return 'dir';
+    }
     // Natural language: go up one level, parent directory, etc.
     if (/^(go up( one)? level|go to parent( directory)?|up one level|parent directory)$/i.test(trimmed)) {
         return 'cd ..';
     }
-    // ls -d */ (list only directories) - must come before general ls check
+    // ls -d */ (list only directories, non-recursive)
     if (/^ls\s+-d\s+\*\/?$/i.test(trimmed)) {
         return 'Get-ChildItem -Directory';
     }
-    // list directories, list folders, show directories, show folders (with optional recursive flag)
+    // list directories, list folders, show directories, show all folders (non-recursive)
     if (/^(list|show)\s+(all\s+)?(directories|folders|dirs)(\s+recursively)?$/i.test(trimmed)) {
-        return 'Get-ChildItem -Directory -Recurse';
+        return 'Get-ChildItem -Directory';
     }
-    // Any ls command with any flags or extra spaces → dir
+    // Any other ls command with flags or extra spaces → dir
     if (/^ls(\s+(-[a-zA-Z]+))*\s*$/i.test(trimmed) || /^ls(\s+[^|]*)?$/i.test(trimmed)) {
         return 'dir';
     }

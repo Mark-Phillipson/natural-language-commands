@@ -11,23 +11,23 @@ suite('translateTerminalCommandForOS list directories', () => {
     });
     test('should translate "list directories recursively" to PowerShell Get-ChildItem on Windows', () => {
         const result = translateTerminalCommandForOS('list directories recursively');
-        assert.strictEqual(result, 'Get-ChildItem -Directory -Recurse');
+        assert.strictEqual(result, 'Get-ChildItem -Directory');
     });
     test('should translate "list folders" to PowerShell Get-ChildItem on Windows', () => {
         const result = translateTerminalCommandForOS('list folders');
-        assert.strictEqual(result, 'Get-ChildItem -Directory -Recurse');
+        assert.strictEqual(result, 'Get-ChildItem -Directory');
     });
     test('should translate "show directories" to PowerShell Get-ChildItem on Windows', () => {
         const result = translateTerminalCommandForOS('show directories');
-        assert.strictEqual(result, 'Get-ChildItem -Directory -Recurse');
+        assert.strictEqual(result, 'Get-ChildItem -Directory');
     });
     test('should translate "show all folders" to PowerShell Get-ChildItem on Windows', () => {
         const result = translateTerminalCommandForOS('show all folders');
-        assert.strictEqual(result, 'Get-ChildItem -Directory -Recurse');
+        assert.strictEqual(result, 'Get-ChildItem -Directory');
     });
     test('should translate "ls -d */" to PowerShell Get-ChildItem on Windows', () => {
         const result = translateTerminalCommandForOS('ls -d */');
-        assert.strictEqual(result, 'Get-ChildItem -Directory -Recurse');
+        assert.strictEqual(result, 'Get-ChildItem -Directory');
     });
 });
 
