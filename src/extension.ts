@@ -28,6 +28,67 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 		return process.env.OPENAI_API_KEY;
 	}
+		// Command: Search files using natural language
+		context.subscriptions.push(
+			vscode.commands.registerCommand('nlc.searchFiles', async (userInput?: string) => {
+				// If no input, prompt the user
+				let input = userInput;
+				if (!input || typeof input !== 'string') {
+					input = await vscode.window.showInputBox({
+						prompt: 'What do you want to search for?',
+						placeHolder: 'e.g. markdown files, TODO comments, *.md, etc.'
+					});
+				}
+				if (!input || input.trim().length === 0) {
+					vscode.window.showInformationMessage('No search query entered.');
+					return;
+				}
+				// Improved extraction for both keyword and file type
+				let query = '';
+				let filesToInclude = '';
+				const lower = input.toLowerCase();
+				// Extract file extension (e.g., .md, .ts, .js, .py, .cs)
+				const extMatch = lower.match(/\.(md|ts|js|py|cs)\b/);
+				if (extMatch) {
+					filesToInclude = `*${extMatch[0]}`;
+				} else if (/markdown files/.test(lower)) {
+					filesToInclude = '*.md';
+				} else if (/typescript files/.test(lower)) {
+					filesToInclude = '*.ts';
+				} else if (/javascript files/.test(lower)) {
+					filesToInclude = '*.js';
+				} else if (/python files/.test(lower)) {
+					filesToInclude = '*.py';
+				} else if (/csharp files/.test(lower)) {
+					filesToInclude = '*.cs';
+				} else if (/\*\.\w+/.test(input)) {
+					filesToInclude = input.trim();
+				}
+
+				// Extract keyword (e.g., TODO, FIXME, or quoted string)
+				const keywordMatch = input.match(/"([^"]+)"|'([^']+)'|\b(todo|fixme|note|comment|function|class|error|warning)\b/i);
+				if (keywordMatch) {
+					query = keywordMatch[1] || keywordMatch[2] || keywordMatch[3] || '';
+				}
+
+				// If no keyword, but file type is present, set query to '*'
+				if (!query && filesToInclude) {
+					query = '*';
+				}
+				// If neither, treat input as the query
+				if (!query && !filesToInclude) {
+					query = input.trim();
+				}
+
+				await vscode.commands.executeCommand('workbench.action.findInFiles', {
+					query,
+					triggerSearch: true,
+					filesToInclude,
+					isRegex: false
+				});
+				vscode.window.showInformationMessage(`Opened search sidebar for query: "${query}" in files: "${filesToInclude}"`);
+			})
+		);
 
 	// Command: Set or update OpenAI API key
 	context.subscriptions.push(

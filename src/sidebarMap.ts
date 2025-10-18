@@ -6,6 +6,10 @@ export function mapSidebarCommand(input: string): string | undefined {
   // eslint-disable-next-line no-console
   console.log('[NLC DEBUG] mapSidebarCommand lower:', input.toLowerCase());
   const lower = input.toLowerCase();
+    // Map search-related commands to nlc.searchFiles
+    if (/(search for|find all|global search|find files|search sidebar|find .* files|search .* files|find .*\.\w+ files|search .*\.\w+ files)/.test(lower)) {
+      return 'nlc.searchFiles';
+    }
   if (/(please )?(show|list|display|see|focus|open|choose|switch)( all)?( my)? sidebars?( list)?( picker)?/.test(lower)) {
     return 'nlc.showSidebars';
   }

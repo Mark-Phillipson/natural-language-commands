@@ -1,3 +1,4 @@
-Currently when we ask for the sidebars it gives us a list that does not include the custom installed ones. 
+ currently when I say something like please do a global search for all markdown files I was expecting the search sidebar to open up and it to carry out the instructions
 
-Can we add a note at the bottom of the picker to state that if you want to see more sidebars view the extensions that are installed in the extensions sidebar?  And provide a link to the extensions sidebar.
+  however instead it gives me this terminal command that does not work on windows so can we fix this?
+
