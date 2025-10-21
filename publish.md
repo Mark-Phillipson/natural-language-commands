@@ -49,7 +49,7 @@ This guide explains how to package, install, and publish your VS Code extension 
 ### Steps
 1. **Create a Publisher** (only once):
    ```pwsh
-   vsce create-publisher <publisher-name>
+   vsce create-publisher marcusvoicecoder
    ```
    Follow the prompts to link your publisher to your Microsoft account.
 2. **Build and package your extension:**
@@ -60,7 +60,7 @@ This guide explains how to package, install, and publish your VS Code extension 
 3. **Publish the extension:**
    ```pwsh
    vsce publish
-vsce publish minor
+   vsce publish minor
    ```
    - The first time, you’ll be prompted for a Personal Access Token (PAT) from Azure DevOps ([generate here](https://dev.azure.com)).
 4. **Verify your extension** on the [Marketplace](https://marketplace.visualstudio.com/vscode).
@@ -102,8 +102,8 @@ To create a tagged release locally:
 2. Create a tag and push it:
 
 ```pwsh
-git tag v1.2.3
-git push origin v1.2.3
+git tag v0.13.2
+git push origin v0.13.2
 ```
 
 Or create a Release in the GitHub UI and give it the same tag (the workflow also runs on `release: published`).
