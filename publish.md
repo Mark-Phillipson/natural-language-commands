@@ -42,9 +42,6 @@ This guide explains how to package, install, and publish your VS Code extension 
 ## 🌍 Publishing to the VS Code Marketplace
 
 ### Prerequisites
-- Microsoft account (sign in at https://marketplace.visualstudio.com/manage)
-- [VSCE](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) installed globally
-- [Azure DevOps CLI](https://aka.ms/azure-devops-cli) (`tfx-cli`) installed globally:
   ```pwsh
   npm install -g tfx-cli
   ```
@@ -69,14 +66,25 @@ vsce publish minor
 4. **Verify your extension** on the [Marketplace](https://marketplace.visualstudio.com/vscode).
 5. **Update your extension** in the future by bumping the version in `package.json` and running `vsce publish` again.
 
----
 
 ## 📝 Notes
-- Make sure your `README.md`, `CHANGELOG.md`, and `package.json` are complete and accurate.
-- Test your extension thoroughly before publishing.
-- Use `vsce publish minor` or `vsce publish patch` to auto-increment the version.
-- Uninstall a local extension with:
   ```pwsh
   code --uninstall-extension <your-extension-name>
   ```
-- For more info, see the [VSCE documentation](https://code.visualstudio.com/api/working-with-extensions/publishing-extension).
+## 🤖 Automating Publish with GitHub Actions
+
+You can automatically publish to the Marketplace when changes are pushed to the `main` branch by adding a GitHub Action. This repository includes a workflow at `.github/workflows/publish.yml` which:
+
+- Installs Node.js and dependencies
+- Compiles the extension
+- Uses `@vscode/vsce` to publish
+
+Required secret:
+- `VSCE_PAT` — a Personal Access Token from Azure DevOps used by `vsce` to authenticate. Create a PAT via https://dev.azure.com with the `All accessible organizations` and the `Marketplace (publish)` or `Packaging (Read & write)` scope.
+
+How to add the secret:
+1. Go to your GitHub repository -> Settings -> Secrets and variables -> Actions
+2. Click New repository secret
+3. Name it `VSCE_PAT` and paste the token value
+
+When you push to `main`, the workflow will run and publish the extension (make sure `package.json` version is updated for new releases).
