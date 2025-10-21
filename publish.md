@@ -88,3 +88,22 @@ How to add the secret:
 3. Name it `VSCE_PAT` and paste the token value
 
 When you push to `main`, the workflow will run and publish the extension (make sure `package.json` version is updated for new releases).
+
+Note about reproducible installs:
+- The GitHub Action checks for `package-lock.json`. If present it runs `npm ci`; otherwise it falls back to `npm install` to avoid failing the run. For reproducible, deterministic installs we recommend committing `package-lock.json` to the repo.
+
+Publishing by tag or release:
+
+- This repository is configured to publish only when you push a tag (example: `v1.2.3`) or when a GitHub Release is published. The workflow filters tags with prefix `v`.
+
+To create a tagged release locally:
+
+1. Bump the version in `package.json` (semantic versioning: `major.minor.patch`).
+2. Create a tag and push it:
+
+```pwsh
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+Or create a Release in the GitHub UI and give it the same tag (the workflow also runs on `release: published`).
