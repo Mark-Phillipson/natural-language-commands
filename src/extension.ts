@@ -505,23 +505,52 @@ export function activate(context: vscode.ExtensionContext) {
 				{ label: '$(plus) Enter New Command', alwaysShow: true },
 				...history.map(cmd => ({ label: cmd }))
 			];
-			// Show QuickPick for history/recall
-			const pick = await vscode.window.showQuickPick(quickPickItems, {
-				placeHolder: 'Press ↑ to recall previous commands or select "Enter New Command"',
-				ignoreFocusOut: true,
+			// Show QuickPick for history/recall so we can capture the user's filter text
+			const quickPick = vscode.window.createQuickPick();
+			quickPick.items = quickPickItems;
+			quickPick.placeholder = 'Press ↑ to recall previous commands or select "Enter New Command"';
+			quickPick.ignoreFocusOut = true;
+			quickPick.canSelectMany = false;
+			if (quickPickItems.length > 0) {
+				quickPick.activeItems = [quickPickItems[0]];
+			}
+			const pickResult = await new Promise<{ selection: vscode.QuickPickItem | undefined; filterValue: string; cancelled: boolean }>((resolve) => {
+				let resolved = false;
+				quickPick.onDidAccept(() => {
+					resolved = true;
+					resolve({
+						selection: quickPick.selectedItems[0],
+						filterValue: quickPick.value,
+						cancelled: false
+					});
+					quickPick.hide();
+				});
+				quickPick.onDidHide(() => {
+					if (!resolved) {
+						resolved = true;
+						resolve({ selection: undefined, filterValue: quickPick.value, cancelled: true });
+					}
+				});
+				quickPick.show();
 			});
-			if (!pick) {
+			quickPick.dispose();
+			if (pickResult.cancelled) {
 				return;
-			} else if (pick.label === '$(plus) Enter New Command') {
+			}
+			const filterValue = pickResult.filterValue;
+			const selectedItem = pickResult.selection;
+			if (!selectedItem || selectedItem.label === '$(plus) Enter New Command') {
+				const defaultValue = filterValue.trim().length > 0 ? filterValue : undefined;
 				userInput = await vscode.window.showInputBox({
 					prompt: 'Enter a command in natural language (e.g., "Open the terminal and run my tests")',
-					placeHolder: 'Describe what you want to do...'
+					placeHolder: 'Describe what you want to do...',
+					value: defaultValue
 				});
 			} else {
 				// Picked a history item, allow editing
 				userInput = await vscode.window.showInputBox({
 					prompt: 'Edit and run previous command:',
-					value: pick.label
+					value: selectedItem.label
 				});
 			}
 		}
