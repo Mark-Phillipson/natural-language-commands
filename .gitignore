@@ -13,7 +13,6 @@ dist/
 .vscode-test/
 .DS_Store
 npm-debug.log*
-package-lock.json
 coverage/
 /.history
 /.idea
@@ -57,7 +56,6 @@ test-results/
 .vscode-test/
 .DS_Store
 npm-debug.log*
-package-lock.json
 coverage/
 /.history
 /.idea
