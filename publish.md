@@ -107,3 +107,7 @@ git push origin v1.2.3
 ```
 
 Or create a Release in the GitHub UI and give it the same tag (the workflow also runs on `release: published`).
+
+Note on CI behavior:
+- Tag push -> The workflow packages the extension and uploads the `.vsix` as a workflow artifact. This is a safe dry-run to allow verifying the built VSIX before publishing.
+- Release published -> The workflow packages and then runs `vsce publish` using the `VSCE_PAT` secret to push to the Marketplace.
