@@ -102,8 +102,8 @@ To create a tagged release locally:
 2. Create a tag and push it:
 
 ```pwsh
-git tag v0.13.2
-git push origin v0.13.2
+git tag v1.12.1
+git push origin v1.12.1
 ```
 
 Or create a Release in the GitHub UI and give it the same tag (the workflow also runs on `release: published`).

@@ -2,13 +2,13 @@
   "name": "natural-language-commands",
   "publisher": "marcusvoicecoder",
   "displayName": "Natural Language Commands",
-  "description": " receive natural language commands and perform a Visual Studio code command that matches",
+  "description": "Receive natural language commands and perform a Visual Studio code command that matches",
   "icon": "natural-language-commands.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/Mark-Phillipson/natural-language-commands.git"
   },
-  "version": "0.13.1",
+  "version": "1.12.1",
   "engines": {
     "vscode": "^1.54.0"
   },
